@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+const (
+	ShippingStatusKey   = "S-DONE"
+	ShippingStatusField = "R-ID"
+)
+
 func postShip(w http.ResponseWriter, r *http.Request) {
 	reqps := reqPostShip{}
 
@@ -284,4 +289,24 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resBuy{TransactionEvidenceID: transactionEvidence.ID})
+}
+
+func (r *Redisful) storeShippingStatusDone(reservedID string, res APIShipmentStatusRes) {
+	if res.Status != "done" {
+		return
+	}
+	r.SetHashToCache(ShippingStatusKey, makeShippingField(reservedID), res)
+}
+
+func (r *Redisful) fetchShippingStatusDone(reservedID string) (*APIShipmentStatusRes, error) {
+	var res APIShipmentStatusRes
+	err := r.GetHashFromCache(ShippingStatusKey, makeShippingField(reservedID), &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func makeShippingField(reservedID string) string {
+	return fmt.Sprintf("%s-%s", ShippingStatusField, reservedID)
 }

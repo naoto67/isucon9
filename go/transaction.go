@@ -162,13 +162,20 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		ts := tempMap[itemDetails[i].ID].(TransShip)
-		ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
-			ReserveID: ts.Shipping.ReserveID,
-		})
+		var ssr *APIShipmentStatusRes
+		ssr, err = redisful.fetchShippingStatusDone(ts.Shipping.ReserveID)
 		if err != nil {
-			log.Print(err)
-			outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
-			return
+			ssr, err = APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
+				ReserveID: ts.Shipping.ReserveID,
+			})
+			if err != nil {
+				log.Print(err)
+				outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
+				return
+			}
+			if ssr.Status == "done" {
+				redisful.storeShippingStatusDone(ts.Shipping.ReserveID, *ssr)
+			}
 		}
 
 		itemDetails[i].TransactionEvidenceID = ts.TransactionEvidence.ID
