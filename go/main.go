@@ -112,16 +112,15 @@ func main() {
 }
 
 func getConfigByName(name string) (string, error) {
-	config := Config{}
-	err := dbx.Get(&config, "SELECT * FROM `configs` WHERE `name` = ?", name)
-	if err == sql.ErrNoRows {
-		return "", nil
-	}
+	var value string
+	redisful, _ := NewRedisful()
+	err := redisful.GetDataFromCache(name, &value)
+	redisful.Close()
 	if err != nil {
 		log.Print(err)
 		return "", err
 	}
-	return config.Val, err
+	return value, err
 }
 
 func getIndex(w http.ResponseWriter, r *http.Request) {
@@ -146,26 +145,10 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = dbx.Exec(
-		"INSERT INTO `configs` (`name`, `val`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `val` = VALUES(`val`)",
-		"payment_service_url",
-		ri.PaymentServiceURL,
-	)
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		return
-	}
-	_, err = dbx.Exec(
-		"INSERT INTO `configs` (`name`, `val`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `val` = VALUES(`val`)",
-		"shipment_service_url",
-		ri.ShipmentServiceURL,
-	)
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		return
-	}
+	redisful, _ := NewRedisful()
+	redisful.FLUSH_ALL()
+	redisful.SetDataToCache("payment_service_url", ri.PaymentServiceURL)
+	redisful.SetDataToCache("shipment_service_url", ri.ShipmentServiceURL)
 
 	res := resInitialize{
 		// キャンペーン実施時には還元率の設定を返す。詳しくはマニュアルを参照のこと。
@@ -174,8 +157,6 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		Language: "Go",
 	}
 
-	redisful, _ := NewRedisful()
-	redisful.FLUSH_ALL()
 	redisful.InitUsersCache()
 	redisful.Close()
 
