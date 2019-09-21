@@ -80,7 +80,6 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	itemSize := len(items)
 	itemDetails := make([]ItemDetail, 0, itemSize)
 	itemIDs := make([]string, 0, itemSize)
-	itemDetailPointer := make(map[int64]*ItemDetail)
 	for _, item := range items {
 		var seller, buyer UserSimple
 		seller, err = redisful.fetchUserSimpleByID(item.SellerID)
@@ -134,7 +133,6 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 
 		itemDetails = append(itemDetails, itemDetail)
 		itemIDs = append(itemIDs, strconv.Itoa(int(item.ID)))
-		itemDetailPointer[itemDetail.ID] = &itemDetail
 	}
 
 	rows, err := dbx.Query("SELECT t.*, s.* FROM `transaction_evidences` t INNER JOIN `shippings` s ON t.`id` = s.transaction_evidence_id WHERE t.`item_id` IN (?)", strings.Join(itemIDs, ","))
