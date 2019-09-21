@@ -140,7 +140,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		itemDetailPointer[itemDetail.ID] = &itemDetail
 	}
 
-	rows, err := tx.Query("SELECT t.*, s.* FROM `transaction_evidences` t INNER JOIN `shippings` s ON INNER JOIN t.`id` = s.transaction_evidence_id WHERE `item_id` IN (?)", strings.Join(itemIDs, ","))
+	rows, err := tx.Query("SELECT t.*, s.* FROM `transaction_evidences` t INNER JOIN `shippings` s ON t.`id` = s.transaction_evidence_id WHERE `item_id` IN (?)", strings.Join(itemIDs, ","))
 	if err != nil && err != sql.ErrNoRows {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
