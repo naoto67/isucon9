@@ -76,13 +76,19 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	redisful, _ := NewRedisful()
+	defer redisful.Close()
 	itemDetails := []ItemDetail{}
 	for _, item := range items {
-		seller, err := getUserSimpleByID(tx, item.SellerID)
+		var seller, buyer UserSimple
+		seller, err = redisful.fetchUserSimpleByID(item.SellerID)
 		if err != nil {
-			outputErrorMsg(w, http.StatusNotFound, "seller not found")
-			tx.Rollback()
-			return
+			seller, err = getUserSimpleByID(tx, item.SellerID)
+			if err != nil {
+				outputErrorMsg(w, http.StatusNotFound, "seller not found")
+				tx.Rollback()
+				return
+			}
 		}
 		category, err := getCategoryByID(tx, item.CategoryID)
 		if err != nil {
@@ -111,11 +117,14 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if item.BuyerID != 0 {
-			buyer, err := getUserSimpleByID(tx, item.BuyerID)
+			buyer, err = redisful.fetchUserSimpleByID(item.BuyerID)
 			if err != nil {
-				outputErrorMsg(w, http.StatusNotFound, "buyer not found")
-				tx.Rollback()
-				return
+				buyer, err = getUserSimpleByID(tx, item.BuyerID)
+				if err != nil {
+					outputErrorMsg(w, http.StatusNotFound, "buyer not found")
+					tx.Rollback()
+					return
+				}
 			}
 			itemDetail.BuyerID = item.BuyerID
 			itemDetail.Buyer = &buyer

@@ -145,6 +145,24 @@ func (r *Redisful) StoreUserCache(user User) error {
 	return err
 }
 
+func (r *Redisful) fetchUserByID(userID int64) (User, error) {
+	user := User{}
+	err := r.GetHashFromCache(USERS_KEY, makeUsersField(userID), &user)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+func (r *Redisful) fetchUserSimpleByID(userID int64) (UserSimple, error) {
+	user := UserSimple{}
+	err := r.GetHashFromCache(USERS_KEY, makeUsersField(userID), &user)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
 func (user User) toJson() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["id"] = user.ID
