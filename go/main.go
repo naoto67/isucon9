@@ -69,7 +69,7 @@ func main() {
 	}
 	defer dbx.Close()
 
-	newPool()
+	redisPool = newPool()
 
 	mux := goji.NewMux()
 
