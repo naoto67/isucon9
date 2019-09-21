@@ -86,7 +86,7 @@ type TransactionEvidence struct {
 
 type Shipping struct {
 	TransactionEvidenceID int64     `json:"transaction_evidence_id" db:"id"`
-	Status                string    `json:"status" db:"trans_status"`
+	Status                string    `json:"status" db:"ship_status"`
 	ItemName              string    `json:"item_name" db:"item_name"`
 	ItemID                int64     `json:"item_id" db:"item_id"`
 	ReserveID             string    `json:"reserve_id" db:"reserve_id"`
@@ -222,7 +222,7 @@ type Transaction struct {
 	ItemCategoryID     int    `json:"item_category_id" db:"item_category_id"`
 	ItemRootCategoryID int    `json:"item_root_category_id" db:"item_root_category_id"`
 
-	ShipStatus  string `json:"status" db:"trans_status"`
+	ShipStatus  string `json:"status" db:"ship_status"`
 	ReserveID   string `json:"reserve_id" db:"reserve_id"`
 	ReserveTime int64  `json:"reserve_time" db:"reserve_time"`
 	ToAddress   string `json:"to_address" db:"to_address"`
