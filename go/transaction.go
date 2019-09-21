@@ -220,7 +220,7 @@ func postComplete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transactionEvidence := TransactionEvidence{}
-	err = dbx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", itemID)
+	err = dbx.Get(&transactionEvidence, "SELECT ? FROM `transactions` WHERE `item_id` = ?", TransactionEvidenceFields, itemID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidence not found")
 		return
@@ -258,7 +258,7 @@ func postComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ? FOR UPDATE", itemID)
+	err = tx.Get(&transactionEvidence, "SELECT ? FROM `transactions` WHERE `item_id` = ? FOR UPDATE", TransactionEvidenceFields, itemID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidences not found")
 		tx.Rollback()
@@ -278,7 +278,7 @@ func postComplete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shipping := Shipping{}
-	err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ? FOR UPDATE", transactionEvidence.ID)
+	err = tx.Get(&shipping, "SELECT ? FROM `transactions` WHERE `id` = ? FOR UPDATE", ShippingFields, transactionEvidence.ID)
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
@@ -303,20 +303,9 @@ func postComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tx.Exec("UPDATE `shippings` SET `status` = ?, `updated_at` = ? WHERE `transaction_evidence_id` = ?",
+	_, err = tx.Exec("UPDATE `transactions` SET `ship_status` = ?, `updated_at` = ?, trans_status = ?, trans_updated_at = ? WHERE `id` = ?",
 		ShippingsStatusDone,
 		time.Now(),
-		transactionEvidence.ID,
-	)
-	if err != nil {
-		log.Print(err)
-
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
-
-	_, err = tx.Exec("UPDATE `transaction_evidences` SET `status` = ?, `updated_at` = ? WHERE `id` = ?",
 		TransactionEvidenceStatusDone,
 		time.Now(),
 		transactionEvidence.ID,

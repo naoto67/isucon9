@@ -85,7 +85,7 @@ type TransactionEvidence struct {
 }
 
 type Shipping struct {
-	TransactionEvidenceID int64     `json:"transaction_evidence_id" db:"transaction_evidence_id"`
+	TransactionEvidenceID int64     `json:"transaction_evidence_id" db:"id"`
 	Status                string    `json:"status" db:"trans_status"`
 	ItemName              string    `json:"item_name" db:"item_name"`
 	ItemID                int64     `json:"item_id" db:"item_id"`

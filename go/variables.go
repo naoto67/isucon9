@@ -47,6 +47,9 @@ const (
 
 	USERS_KEY         = "USERS"
 	USER_FIELD_PREFIX = "USER-FIELD"
+
+	TransactionEvidenceFields = "id, seller_id, buyer_id, trans_status, item_id, item_name, item_price, item_description, item_category_id, item_root_category_id, created_at, trans_updated_at"
+	ShippingFields            = "id, ship_status, item_id, item_name, reserve_id, reserve_time, to_address, to_name, from_address, from_name, img_binary, created_at, updated_at"
 )
 
 var (
