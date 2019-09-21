@@ -198,7 +198,7 @@ func getQRCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transactionEvidence := TransactionEvidence{}
-	err = dbx.Get(&transactionEvidence, "SELECT ? FROM `transactions` WHERE `id` = ?", TransactionEvidenceFields, transactionEvidenceIDStr)
+	err = dbx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `id` = ?", TransactionEvidenceFields), transactionEvidenceIDStr)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidences not found")
 		return
@@ -215,7 +215,7 @@ func getQRCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shipping := Shipping{}
-	err = dbx.Get(&shipping, "SELECT ? FROM `transactions` WHERE `id` = ?", ShippingFields, transactionEvidence.ID)
+	err = dbx.Get(&shipping, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `id` = ?", ShippingFields), transactionEvidence.ID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "shippings not found")
 		return
@@ -268,7 +268,7 @@ func getSettings(w http.ResponseWriter, r *http.Request) {
 
 func getReports(w http.ResponseWriter, r *http.Request) {
 	transactionEvidences := make([]TransactionEvidence, 0)
-	err := dbx.Select(&transactionEvidences, "SELECT ? FROM `transactions` WHERE `id` > 15007", TransactionEvidenceFields)
+	err := dbx.Select(&transactionEvidences, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `id` > 15007", TransactionEvidenceFields))
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
