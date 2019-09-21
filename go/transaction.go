@@ -173,6 +173,9 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 				outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
 				return
 			}
+			if ssr.Status == "done" {
+				redisful.storeShippingStatusDone(ts.Shipping.ReserveID, *ssr)
+			}
 		}
 
 		itemDetails[i].TransactionEvidenceID = ts.TransactionEvidence.ID
