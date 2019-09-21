@@ -27,7 +27,7 @@ type Redisful struct {
 // redisPool := newPool()
 func newPool() *redis.Pool {
 	return &redis.Pool{
-		MaxIdle:     10,
+		MaxIdle:     30,
 		MaxActive:   0,
 		IdleTimeout: 30 * time.Second,
 		Wait:        false,
