@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -78,7 +79,11 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 
 	redisful, _ := NewRedisful()
 	defer redisful.Close()
-	itemDetails := []ItemDetail{}
+
+	itemSize := len(items)
+	itemDetails := make([]ItemDetail, 0, itemSize)
+	itemIDs := make([]string, 0, itemSize)
+	itemDetailPointer := make(map[int64]*ItemDetail)
 	for _, item := range items {
 		var seller, buyer UserSimple
 		seller, err = redisful.fetchUserSimpleByID(item.SellerID)
@@ -130,46 +135,41 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			itemDetail.Buyer = &buyer
 		}
 
-		transactionEvidence := TransactionEvidence{}
-		err = tx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", item.ID)
-		if err != nil && err != sql.ErrNoRows {
-			// It's able to ignore ErrNoRows
-			log.Print(err)
+		itemDetails = append(itemDetails, itemDetail)
+		itemIDs = append(itemIDs, strconv.Itoa(int(item.ID)))
+		itemDetailPointer[itemDetail.ID] = &itemDetail
+	}
+
+	rows, err := tx.Query("SELECT t.*, s.* FROM `transaction_evidences` t INNER JOIN `shippings` s ON INNER JOIN t.`id` = s.transaction_evidence_id WHERE `item_id` IN (?)", strings.Join(itemIDs, ","))
+	if err != nil && err != sql.ErrNoRows {
+		log.Print(err)
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		tx.Rollback()
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		t := TransactionEvidence{}
+		s := Shipping{}
+		if err := rows.Scan(&t.ID, &t.SellerID, &t.BuyerID, &t.Status, &t.ItemName, &t.ItemID, &t.ItemName, &t.ItemDescription, &t.ItemCategoryID, &t.ItemRootCategoryID, &t.CreatedAt, &t.UpdatedAt, &s.TransactionEvidenceID, &s.Status, &s.ItemName, &s.ItemID, &s.ReserveID, &s.ReserveTime, &s.ToAddress, &s.ToName, &s.FromAddress, &s.FromName, &s.ImgBinary, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
 			tx.Rollback()
 			return
 		}
 
-		if transactionEvidence.ID > 0 {
-			shipping := Shipping{}
-			err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ?", transactionEvidence.ID)
-			if err == sql.ErrNoRows {
-				outputErrorMsg(w, http.StatusNotFound, "shipping not found")
-				tx.Rollback()
-				return
-			}
-			if err != nil {
-				log.Print(err)
-				outputErrorMsg(w, http.StatusInternalServerError, "db error")
-				tx.Rollback()
-				return
-			}
-			ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
-				ReserveID: shipping.ReserveID,
-			})
-			if err != nil {
-				log.Print(err)
-				outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
-				tx.Rollback()
-				return
-			}
-
-			itemDetail.TransactionEvidenceID = transactionEvidence.ID
-			itemDetail.TransactionEvidenceStatus = transactionEvidence.Status
-			itemDetail.ShippingStatus = ssr.Status
+		ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
+			ReserveID: s.ReserveID,
+		})
+		if err != nil {
+			log.Print(err)
+			outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
+			tx.Rollback()
+			return
 		}
 
-		itemDetails = append(itemDetails, itemDetail)
+		itemDetailPointer[t.ItemID].TransactionEvidenceID = t.ID
+		itemDetailPointer[t.ItemID].TransactionEvidenceStatus = t.Status
+		itemDetailPointer[t.ItemID].ShippingStatus = ssr.Status
 	}
 	tx.Commit()
 
