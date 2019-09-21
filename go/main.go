@@ -174,6 +174,10 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		Language: "Go",
 	}
 
+	redisful, _ := NewRedisful()
+	redisful.InitUsersCache()
+	redisful.Close()
+
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(res)
 }
