@@ -170,8 +170,10 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transactionEvidence := TransactionEvidence{}
+	time.Sleep(100 * time.Millisecond)
 	err = dbx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `item_id` = ?", TransactionEvidenceFields), itemID)
 	if err == sql.ErrNoRows {
+		log.Println(itemID, transactionEvidence, "NotFound")
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidence not found")
 		return
 	}
