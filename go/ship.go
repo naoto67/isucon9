@@ -39,7 +39,7 @@ func postShip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transactionEvidence := TransactionEvidence{}
-	err = dbx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", itemID)
+	err = dbx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `item_id` = ?", TransactionEvidenceFields), itemID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidences not found")
 		return
@@ -78,7 +78,7 @@ func postShip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `id` = ? FOR UPDATE", transactionEvidence.ID)
+	err = tx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `id` = ? FOR UPDATE", TransactionEvidenceFields), transactionEvidence.ID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidences not found")
 		tx.Rollback()
@@ -98,7 +98,7 @@ func postShip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shipping := Shipping{}
-	err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ? FOR UPDATE", transactionEvidence.ID)
+	err = tx.Get(&shipping, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `id` = ? FOR UPDATE", ShippingFields), transactionEvidence.ID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "shippings not found")
 		tx.Rollback()
@@ -122,7 +122,7 @@ func postShip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tx.Exec("UPDATE `shippings` SET `status` = ?, `img_binary` = ?, `updated_at` = ? WHERE `transaction_evidence_id` = ?",
+	_, err = tx.Exec("UPDATE `transactions` SET `ship_status` = ?, `img_binary` = ?, `updated_at` = ? WHERE `id` = ?",
 		ShippingsStatusWaitPickup,
 		img,
 		time.Now(),
@@ -170,8 +170,10 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transactionEvidence := TransactionEvidence{}
-	err = dbx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", itemID)
+	time.Sleep(100 * time.Millisecond)
+	err = dbx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `item_id` = ?", TransactionEvidenceFields), itemID)
 	if err == sql.ErrNoRows {
+		log.Println(itemID, transactionEvidence, "NotFound")
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidence not found")
 		return
 	}
@@ -192,6 +194,7 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	item := Item{}
 	err = tx.Get(&item, "SELECT * FROM `items` WHERE `id` = ? FOR UPDATE", itemID)
 	if err == sql.ErrNoRows {
+		log.Println(itemID, "item NotFound")
 		outputErrorMsg(w, http.StatusNotFound, "items not found")
 		tx.Rollback()
 		return
@@ -209,8 +212,10 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `id` = ? FOR UPDATE", transactionEvidence.ID)
+	err = tx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `id` = ? FOR UPDATE", TransactionEvidenceFields), transactionEvidence.ID)
+	// err = tx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `item_id` = ? FOR UPDATE", TransactionEvidenceFields), item.ID)
 	if err == sql.ErrNoRows {
+		log.Println(transactionEvidence.ID, "trans NotFound")
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidences not found")
 		tx.Rollback()
 		return
@@ -229,7 +234,7 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shipping := Shipping{}
-	err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ? FOR UPDATE", transactionEvidence.ID)
+	err = tx.Get(&shipping, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `id` = ? FOR UPDATE", ShippingFields), transactionEvidence.ID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "shippings not found")
 		tx.Rollback()
@@ -259,20 +264,9 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tx.Exec("UPDATE `shippings` SET `status` = ?, `updated_at` = ? WHERE `transaction_evidence_id` = ?",
+	_, err = tx.Exec("UPDATE `transactions` SET `ship_status` = ?, `updated_at` = ?, `trans_status` = ?, `trans_updated_at` = ? WHERE `id` = ?",
 		ssr.Status,
 		time.Now(),
-		transactionEvidence.ID,
-	)
-	if err != nil {
-		log.Print(err)
-
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
-
-	_, err = tx.Exec("UPDATE `transaction_evidences` SET `status` = ?, `updated_at` = ? WHERE `id` = ?",
 		TransactionEvidenceStatusWaitDone,
 		time.Now(),
 		transactionEvidence.ID,

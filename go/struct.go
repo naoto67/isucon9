@@ -73,7 +73,7 @@ type TransactionEvidence struct {
 	ID                 int64     `json:"id" db:"id"`
 	SellerID           int64     `json:"seller_id" db:"seller_id"`
 	BuyerID            int64     `json:"buyer_id" db:"buyer_id"`
-	Status             string    `json:"status" db:"status"`
+	Status             string    `json:"status" db:"trans_status"`
 	ItemID             int64     `json:"item_id" db:"item_id"`
 	ItemName           string    `json:"item_name" db:"item_name"`
 	ItemPrice          int       `json:"item_price" db:"item_price"`
@@ -81,12 +81,12 @@ type TransactionEvidence struct {
 	ItemCategoryID     int       `json:"item_category_id" db:"item_category_id"`
 	ItemRootCategoryID int       `json:"item_root_category_id" db:"item_root_category_id"`
 	CreatedAt          time.Time `json:"-" db:"created_at"`
-	UpdatedAt          time.Time `json:"-" db:"updated_at"`
+	UpdatedAt          time.Time `json:"-" db:"trans_updated_at"`
 }
 
 type Shipping struct {
-	TransactionEvidenceID int64     `json:"transaction_evidence_id" db:"transaction_evidence_id"`
-	Status                string    `json:"status" db:"status"`
+	TransactionEvidenceID int64     `json:"transaction_evidence_id" db:"id"`
+	Status                string    `json:"status" db:"ship_status"`
 	ItemName              string    `json:"item_name" db:"item_name"`
 	ItemID                int64     `json:"item_id" db:"item_id"`
 	ReserveID             string    `json:"reserve_id" db:"reserve_id"`
@@ -208,4 +208,30 @@ type resSetting struct {
 type TransShip struct {
 	TransactionEvidence TransactionEvidence
 	Shipping            Shipping
+}
+
+type Transaction struct {
+	ID                 int64  `json:"id" db:"id"`
+	SellerID           int64  `json:"seller_id" db:"seller_id"`
+	BuyerID            int64  `json:"buyer_id" db:"buyer_id"`
+	TransStatus        string `json:"status" db:"trans_status"`
+	ItemID             int64  `json:"item_id" db:"item_id"`
+	ItemName           string `json:"item_name" db:"item_name"`
+	ItemPrice          int    `json:"item_price" db:"item_price"`
+	ItemDescription    string `json:"item_description" db:"item_description"`
+	ItemCategoryID     int    `json:"item_category_id" db:"item_category_id"`
+	ItemRootCategoryID int    `json:"item_root_category_id" db:"item_root_category_id"`
+
+	ShipStatus  string `json:"status" db:"ship_status"`
+	ReserveID   string `json:"reserve_id" db:"reserve_id"`
+	ReserveTime int64  `json:"reserve_time" db:"reserve_time"`
+	ToAddress   string `json:"to_address" db:"to_address"`
+	ToName      string `json:"to_name" db:"to_name"`
+	FromAddress string `json:"from_address" db:"from_address"`
+	FromName    string `json:"from_name" db:"from_name"`
+	ImgBinary   []byte `json:"-" db:"img_binary"`
+
+	CreatedAt      time.Time `json:"-" db:"created_at"`
+	UpdatedAt      time.Time `json:"-" db:"updated_at"`
+	TransUpdatedAt time.Time `json:"-" db:"trans_updated_at"`
 }
