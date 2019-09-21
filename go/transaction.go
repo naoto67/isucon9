@@ -461,8 +461,10 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
+
+	seller.NumSellItems = seller.NumSellItems + 1
 	_, err = tx.Exec("UPDATE `users` SET `num_sell_items`=?, `last_bump`=? WHERE `id`=?",
-		seller.NumSellItems+1,
+		seller.NumSellItems,
 		now,
 		seller.ID,
 	)
