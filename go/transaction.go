@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -42,20 +43,13 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tx := dbx.MustBegin()
 	items := []Item{}
 	if itemID > 0 && createdAt > 0 {
 		// paging
-		err := tx.Select(&items,
-			"SELECT * FROM `items` WHERE (`seller_id` = ? OR `buyer_id` = ?) AND `status` IN (?,?,?,?,?) AND (`created_at` < ?  OR (`created_at` <= ? AND `id` < ?)) ORDER BY `created_at` DESC, `id` DESC LIMIT ?",
+		err := dbx.Select(&items,
+			"SELECT * FROM (SELECT * FROM `items` WHERE `seller_id` = ? UNION SELECT * FROM `items` WHERE `buyer_id` = ?) m WHERE m.`created_at` <= ? AND m.`id` < ? ORDER BY `created_at` DESC, `id` LIMIT ?",
 			user.ID,
 			user.ID,
-			ItemStatusOnSale,
-			ItemStatusTrading,
-			ItemStatusSoldOut,
-			ItemStatusCancel,
-			ItemStatusStop,
-			time.Unix(createdAt, 0),
 			time.Unix(createdAt, 0),
 			itemID,
 			TransactionsPerPage+1,
@@ -63,42 +57,44 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Print(err)
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
-			tx.Rollback()
 			return
 		}
 	} else {
 		// 1st page
-		err := tx.Select(&items,
-			"SELECT * FROM `items` WHERE (`seller_id` = ? OR `buyer_id` = ?) AND `status` IN (?,?,?,?,?) ORDER BY `created_at` DESC, `id` DESC LIMIT ?",
+		err := dbx.Select(&items,
+			"SELECT * FROM `items` WHERE `seller_id` = ? UNION SELECT * FROM `items` WHERE `buyer_id` = ? ORDER BY `created_at` DESC, `id` LIMIT ?",
 			user.ID,
 			user.ID,
-			ItemStatusOnSale,
-			ItemStatusTrading,
-			ItemStatusSoldOut,
-			ItemStatusCancel,
-			ItemStatusStop,
 			TransactionsPerPage+1,
 		)
 		if err != nil {
 			log.Print(err)
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
-			tx.Rollback()
 			return
 		}
 	}
 
-	itemDetails := []ItemDetail{}
+	redisful, _ := NewRedisful()
+	defer redisful.Close()
+
+	itemSize := len(items)
+	itemDetails := make([]ItemDetail, 0, itemSize)
+	itemIDs := make([]string, 0, itemSize)
 	for _, item := range items {
-		seller, err := getUserSimpleByID(tx, item.SellerID)
+		var seller, buyer UserSimple
+		seller, err = redisful.fetchUserSimpleByID(item.SellerID)
 		if err != nil {
-			outputErrorMsg(w, http.StatusNotFound, "seller not found")
-			tx.Rollback()
-			return
+			seller, err = getUserSimpleByID(dbx, item.SellerID)
+			if err != nil {
+				log.Print(err)
+				outputErrorMsg(w, http.StatusNotFound, "seller not found")
+				return
+			}
 		}
-		category, err := getCategoryByID(tx, item.CategoryID)
+		category, err := getCategoryByID(dbx, item.CategoryID)
 		if err != nil {
+			log.Print(err)
 			outputErrorMsg(w, http.StatusNotFound, "category not found")
-			tx.Rollback()
 			return
 		}
 
@@ -122,58 +118,63 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if item.BuyerID != 0 {
-			buyer, err := getUserSimpleByID(tx, item.BuyerID)
+			buyer, err = redisful.fetchUserSimpleByID(item.BuyerID)
 			if err != nil {
-				outputErrorMsg(w, http.StatusNotFound, "buyer not found")
-				tx.Rollback()
-				return
+				buyer, err = getUserSimpleByID(dbx, item.BuyerID)
+				if err != nil {
+					log.Print(err)
+					outputErrorMsg(w, http.StatusNotFound, "buyer not found")
+					return
+				}
 			}
 			itemDetail.BuyerID = item.BuyerID
 			itemDetail.Buyer = &buyer
 		}
 
-		transactionEvidence := TransactionEvidence{}
-		err = tx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", item.ID)
-		if err != nil && err != sql.ErrNoRows {
-			// It's able to ignore ErrNoRows
+		itemDetails = append(itemDetails, itemDetail)
+		itemIDs = append(itemIDs, strconv.Itoa(int(item.ID)))
+	}
+
+	rows, err := dbx.Query("SELECT t.*, s.* FROM `transaction_evidences` t INNER JOIN `shippings` s ON t.`id` = s.transaction_evidence_id WHERE t.`item_id` IN (?)", strings.Join(itemIDs, ","))
+	if err != nil && err != sql.ErrNoRows {
+		log.Print(err)
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
+
+	tempMap := make(map[int64]interface{})
+	for rows.Next() {
+		t := TransactionEvidence{}
+		s := Shipping{}
+		if err := rows.Scan(&t.ID, &t.SellerID, &t.BuyerID, &t.Status, &t.ItemID, &t.ItemName, &t.ItemPrice, &t.ItemDescription, &t.ItemCategoryID, &t.ItemRootCategoryID, &t.CreatedAt, &t.UpdatedAt, &s.TransactionEvidenceID, &s.Status, &s.ItemName, &s.ItemID, &s.ReserveID, &s.ReserveTime, &s.ToAddress, &s.ToName, &s.FromAddress, &s.FromName, &s.ImgBinary, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			log.Print(err)
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
-			tx.Rollback()
+			return
+		}
+		tempMap[t.ItemID] = TransShip{
+			TransactionEvidence: t,
+			Shipping:            s,
+		}
+	}
+	rows.Close()
+	for i := range itemDetails {
+		if tempMap[itemDetails[i].ID] == nil {
+			continue
+		}
+		ts := tempMap[itemDetails[i].ID].(TransShip)
+		ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
+			ReserveID: ts.Shipping.ReserveID,
+		})
+		if err != nil {
+			log.Print(err)
+			outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
 			return
 		}
 
-		if transactionEvidence.ID > 0 {
-			shipping := Shipping{}
-			err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ?", transactionEvidence.ID)
-			if err == sql.ErrNoRows {
-				outputErrorMsg(w, http.StatusNotFound, "shipping not found")
-				tx.Rollback()
-				return
-			}
-			if err != nil {
-				log.Print(err)
-				outputErrorMsg(w, http.StatusInternalServerError, "db error")
-				tx.Rollback()
-				return
-			}
-			ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
-				ReserveID: shipping.ReserveID,
-			})
-			if err != nil {
-				log.Print(err)
-				outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
-				tx.Rollback()
-				return
-			}
-
-			itemDetail.TransactionEvidenceID = transactionEvidence.ID
-			itemDetail.TransactionEvidenceStatus = transactionEvidence.Status
-			itemDetail.ShippingStatus = ssr.Status
-		}
-
-		itemDetails = append(itemDetails, itemDetail)
+		itemDetails[i].TransactionEvidenceID = ts.TransactionEvidence.ID
+		itemDetails[i].TransactionEvidenceStatus = ts.TransactionEvidence.Status
+		itemDetails[i].ShippingStatus = ssr.Status
 	}
-	tx.Commit()
 
 	hasNext := false
 	if len(itemDetails) > TransactionsPerPage {

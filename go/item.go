@@ -627,6 +627,11 @@ func postBump(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	redisful, _ := NewRedisful()
+	seller.LastBump = now
+	redisful.StoreUserCache(seller)
+	redisful.Close()
+
 	err = tx.Get(&targetItem, "SELECT * FROM `items` WHERE `id` = ?", itemID)
 	if err != nil {
 		log.Print(err)

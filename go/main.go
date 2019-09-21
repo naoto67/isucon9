@@ -69,6 +69,8 @@ func main() {
 	}
 	defer dbx.Close()
 
+	redisPool = newPool()
+
 	mux := goji.NewMux()
 
 	// API
@@ -171,6 +173,11 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		// 実装言語を返す
 		Language: "Go",
 	}
+
+	redisful, _ := NewRedisful()
+	redisful.FLUSH_ALL()
+	redisful.InitUsersCache()
+	redisful.Close()
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(res)
