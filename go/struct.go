@@ -204,3 +204,8 @@ type resSetting struct {
 	User              *User      `json:"user,omitempty"`
 	Categories        []Category `json:"categories"`
 }
+
+type TransShip struct {
+	TransactionEvidence TransactionEvidence
+	Shipping            Shipping
+}

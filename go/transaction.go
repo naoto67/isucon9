@@ -144,6 +144,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tempMap := make(map[int64]interface{})
 	for rows.Next() {
 		t := TransactionEvidence{}
 		s := Shipping{}
@@ -152,9 +153,19 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
 			return
 		}
-
+		tempMap[t.ItemID] = TransShip{
+			TransactionEvidence: t,
+			Shipping:            s,
+		}
+	}
+	rows.Close()
+	for i := range itemDetails {
+		if tempMap[itemDetails[i].ID] == nil {
+			continue
+		}
+		ts := tempMap[itemDetails[i].ID].(TransShip)
 		ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
-			ReserveID: s.ReserveID,
+			ReserveID: ts.Shipping.ReserveID,
 		})
 		if err != nil {
 			log.Print(err)
@@ -162,11 +173,10 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		itemDetailPointer[t.ItemID].TransactionEvidenceID = t.ID
-		itemDetailPointer[t.ItemID].TransactionEvidenceStatus = t.Status
-		itemDetailPointer[t.ItemID].ShippingStatus = ssr.Status
+		itemDetails[i].TransactionEvidenceID = ts.TransactionEvidence.ID
+		itemDetails[i].TransactionEvidenceStatus = ts.TransactionEvidence.Status
+		itemDetails[i].ShippingStatus = ssr.Status
 	}
-	rows.Close()
 
 	hasNext := false
 	if len(itemDetails) > TransactionsPerPage {
