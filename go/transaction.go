@@ -87,12 +87,14 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			seller, err = getUserSimpleByID(dbx, item.SellerID)
 			if err != nil {
+				log.Print(err)
 				outputErrorMsg(w, http.StatusNotFound, "seller not found")
 				return
 			}
 		}
 		category, err := getCategoryByID(dbx, item.CategoryID)
 		if err != nil {
+			log.Print(err)
 			outputErrorMsg(w, http.StatusNotFound, "category not found")
 			return
 		}
@@ -121,6 +123,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				buyer, err = getUserSimpleByID(dbx, item.BuyerID)
 				if err != nil {
+					log.Print(err)
 					outputErrorMsg(w, http.StatusNotFound, "buyer not found")
 					return
 				}
@@ -145,6 +148,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		t := TransactionEvidence{}
 		s := Shipping{}
 		if err := rows.Scan(&t.ID, &t.SellerID, &t.BuyerID, &t.Status, &t.ItemName, &t.ItemID, &t.ItemName, &t.ItemDescription, &t.ItemCategoryID, &t.ItemRootCategoryID, &t.CreatedAt, &t.UpdatedAt, &s.TransactionEvidenceID, &s.Status, &s.ItemName, &s.ItemID, &s.ReserveID, &s.ReserveTime, &s.ToAddress, &s.ToName, &s.FromAddress, &s.FromName, &s.ImgBinary, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			log.Print(err)
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
 			return
 		}
