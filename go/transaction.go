@@ -43,11 +43,10 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tx := dbx.MustBegin()
 	items := []Item{}
 	if itemID > 0 && createdAt > 0 {
 		// paging
-		err := tx.Select(&items,
+		err := dbx.Select(&items,
 			"SELECT * FROM (SELECT * FROM `items` WHERE `seller_id` = ? UNION SELECT * FROM `items` WHERE `buyer_id` = ?) m WHERE m.`created_at` <= ? AND m.`id` < ? ORDER BY `created_at` DESC, `id` LIMIT ?",
 			user.ID,
 			user.ID,
@@ -58,12 +57,11 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Print(err)
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
-			tx.Rollback()
 			return
 		}
 	} else {
 		// 1st page
-		err := tx.Select(&items,
+		err := dbx.Select(&items,
 			"SELECT * FROM `items` WHERE `seller_id` = ? UNION SELECT * FROM `items` WHERE `buyer_id` = ? ORDER BY `created_at` DESC, `id` LIMIT ?",
 			user.ID,
 			user.ID,
@@ -72,7 +70,6 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Print(err)
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
-			tx.Rollback()
 			return
 		}
 	}
@@ -88,17 +85,15 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		var seller, buyer UserSimple
 		seller, err = redisful.fetchUserSimpleByID(item.SellerID)
 		if err != nil {
-			seller, err = getUserSimpleByID(tx, item.SellerID)
+			seller, err = getUserSimpleByID(dbx, item.SellerID)
 			if err != nil {
 				outputErrorMsg(w, http.StatusNotFound, "seller not found")
-				tx.Rollback()
 				return
 			}
 		}
-		category, err := getCategoryByID(tx, item.CategoryID)
+		category, err := getCategoryByID(dbx, item.CategoryID)
 		if err != nil {
 			outputErrorMsg(w, http.StatusNotFound, "category not found")
-			tx.Rollback()
 			return
 		}
 
@@ -124,10 +119,9 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		if item.BuyerID != 0 {
 			buyer, err = redisful.fetchUserSimpleByID(item.BuyerID)
 			if err != nil {
-				buyer, err = getUserSimpleByID(tx, item.BuyerID)
+				buyer, err = getUserSimpleByID(dbx, item.BuyerID)
 				if err != nil {
 					outputErrorMsg(w, http.StatusNotFound, "buyer not found")
-					tx.Rollback()
 					return
 				}
 			}
@@ -140,20 +134,18 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		itemDetailPointer[itemDetail.ID] = &itemDetail
 	}
 
-	rows, err := tx.Query("SELECT t.*, s.* FROM `transaction_evidences` t INNER JOIN `shippings` s ON t.`id` = s.transaction_evidence_id WHERE t.`item_id` IN (?)", strings.Join(itemIDs, ","))
+	rows, err := dbx.Query("SELECT t.*, s.* FROM `transaction_evidences` t INNER JOIN `shippings` s ON t.`id` = s.transaction_evidence_id WHERE t.`item_id` IN (?)", strings.Join(itemIDs, ","))
 	if err != nil && err != sql.ErrNoRows {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
 		return
 	}
-	defer rows.Close()
+
 	for rows.Next() {
 		t := TransactionEvidence{}
 		s := Shipping{}
 		if err := rows.Scan(&t.ID, &t.SellerID, &t.BuyerID, &t.Status, &t.ItemName, &t.ItemID, &t.ItemName, &t.ItemDescription, &t.ItemCategoryID, &t.ItemRootCategoryID, &t.CreatedAt, &t.UpdatedAt, &s.TransactionEvidenceID, &s.Status, &s.ItemName, &s.ItemID, &s.ReserveID, &s.ReserveTime, &s.ToAddress, &s.ToName, &s.FromAddress, &s.FromName, &s.ImgBinary, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
-			tx.Rollback()
 			return
 		}
 
@@ -163,7 +155,6 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Print(err)
 			outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
-			tx.Rollback()
 			return
 		}
 
@@ -171,7 +162,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		itemDetailPointer[t.ItemID].TransactionEvidenceStatus = t.Status
 		itemDetailPointer[t.ItemID].ShippingStatus = ssr.Status
 	}
-	tx.Commit()
+	rows.Close()
 
 	hasNext := false
 	if len(itemDetails) > TransactionsPerPage {
