@@ -425,7 +425,7 @@ func getItem(w http.ResponseWriter, r *http.Request) {
 
 		if transactionEvidence.ID > 0 {
 			shipping := Shipping{}
-			err = dbx.Get(&shipping, fmt.Sprintf("SELECT % FROM `transactions` WHERE `id` = ?", ShippingFields), transactionEvidence.ID)
+			err = dbx.Get(&shipping, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `id` = ?", ShippingFields), transactionEvidence.ID)
 			if err == sql.ErrNoRows {
 				outputErrorMsg(w, http.StatusNotFound, "shipping not found")
 				return
