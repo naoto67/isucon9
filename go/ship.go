@@ -212,7 +212,8 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `item_id` = ? FOR UPDATE", TransactionEvidenceFields), transactionEvidence.ID)
+	err = tx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `id` = ? FOR UPDATE", TransactionEvidenceFields), transactionEvidence.ID)
+	// err = tx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `item_id` = ? FOR UPDATE", TransactionEvidenceFields), item.ID)
 	if err == sql.ErrNoRows {
 		log.Println(transactionEvidence.ID, "trans NotFound")
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidences not found")
