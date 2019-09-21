@@ -473,6 +473,9 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tx.Commit()
+	redisful, _ := NewRedisful()
+	redisful.StoreUserCache(seller)
+	redisful.Close()
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resSell{ID: itemID})
