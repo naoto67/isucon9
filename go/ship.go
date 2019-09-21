@@ -194,6 +194,7 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	item := Item{}
 	err = tx.Get(&item, "SELECT * FROM `items` WHERE `id` = ? FOR UPDATE", itemID)
 	if err == sql.ErrNoRows {
+		log.Println(itemID, items, "item NotFound")
 		outputErrorMsg(w, http.StatusNotFound, "items not found")
 		tx.Rollback()
 		return
@@ -213,6 +214,7 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 
 	err = tx.Get(&transactionEvidence, fmt.Sprintf("SELECT %s FROM `transactions` WHERE `item_id` = ? FOR UPDATE", TransactionEvidenceFields), transactionEvidence.ID)
 	if err == sql.ErrNoRows {
+		log.Println(transactionEvidence.ID, "trans NotFound")
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidences not found")
 		tx.Rollback()
 		return
