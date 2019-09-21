@@ -63,7 +63,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// 1st page
 		err := tx.Select(&items,
-			"SELECT * FROM (SELECT i.*, u.id seller.id,  FROM `items` i INNER JOIN users u on u.id = i.seller_id WHERE `seller_id` = ? UNION SELECT i.* FROM `items` i INNER JOIN users u on u.id = i.buyer_id WHERE `buyer_id` = ? ) m ORDER BY m.`created_at` DESC, m.`id` LIMIT ?",
+			"SELECT * FROM `items` WHERE `seller_id` = ? UNION SELECT * FROM `items` WHERE `buyer_id` = ? ORDER BY `created_at` DESC, `id` LIMIT ?",
 			user.ID,
 			user.ID,
 			TransactionsPerPage+1,
