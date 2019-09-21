@@ -69,6 +69,8 @@ func main() {
 	}
 	defer dbx.Close()
 
+	newPool()
+
 	mux := goji.NewMux()
 
 	// API

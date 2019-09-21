@@ -3,8 +3,10 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
@@ -67,10 +69,12 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := dbx.Exec("INSERT INTO `users` (`account_name`, `hashed_password`, `address`) VALUES (?, ?, ?)",
+	timeNow := time.Now()
+	result, err := dbx.Exec("INSERT INTO `users` (`account_name`, `hashed_password`, `address`, `created_at`) VALUES (?, ?, ?, ?)",
 		accountName,
 		hashedPassword,
 		address,
+		timeNow,
 	)
 	if err != nil {
 		log.Print(err)
@@ -87,6 +91,18 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
+
+	redisful, _ := NewRedisful()
+
+	redisful.StoreUserCache(User{
+		ID:             userID,
+		AccountName:    accountName,
+		HashedPassword: hashedPassword,
+		Address:        address,
+		NumSellItems:   0,
+		LastBump:       time.Date(2000, 1, 1, 0, 0, 0, 0, time.Local),
+		CreatedAt:      timeNow,
+	})
 
 	u := User{
 		ID:          userID,
@@ -105,4 +121,42 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(u)
+}
+
+func (r *Redisful) InitUsersCache() error {
+	users := []User{}
+	err := dbx.Select(&users, "SELECT * FROM users")
+	if err != nil {
+		return err
+	}
+
+	for i := range users {
+		err = r.SetHashToCache(USERS_KEY, makeUsersField(users[i].ID), users[i].toJson())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *Redisful) StoreUserCache(user User) error {
+	err := r.SetHashToCache(USERS_KEY, makeUsersField(user.ID), user.toJson())
+	return err
+}
+
+func (user User) toJson() map[string]interface{} {
+	res := make(map[string]interface{})
+	res["id"] = user.ID
+	res["account_name"] = user.AccountName
+	res["hashed_password"] = user.HashedPassword
+	res["address"] = user.Address
+	res["num_sell_items"] = user.NumSellItems
+	res["last_bump"] = user.LastBump
+	res["created_at"] = user.CreatedAt
+	return res
+}
+
+func makeUsersField(userID int64) string {
+	return fmt.Sprintf("%s-%d", USER_FIELD_PREFIX, userID)
 }

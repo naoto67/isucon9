@@ -44,6 +44,9 @@ const (
 	TransactionsPerPage = 10
 
 	BcryptCost = 10
+
+	USERS_KEY         = "USERS"
+	USER_FIELD_PREFIX = "USER-FIELD"
 )
 
 var (
