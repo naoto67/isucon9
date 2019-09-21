@@ -175,6 +175,7 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 	}
 
 	redisful, _ := NewRedisful()
+	redisful.FLUSH_ALL()
 	redisful.InitUsersCache()
 	redisful.Close()
 
