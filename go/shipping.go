@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 )
@@ -18,6 +19,19 @@ func (r *Redisful) StoreShipping(shipping Shipping) {
 	r.SetHashToCache(SHIP_KEY, field, shipping)
 }
 
+// func (r *Redisful) InitShippings() {
+// 	var shippings []Shipping
+// 	err := dbx.Select(&shippings, "SELECT * FROM `shippings`")
+// 	if err != nil {
+// 		log.Println("failed to select shippings")
+// 		return
+// 	}
+// 	var field string
+// 	for i, _ := range shippings {
+// 		field = makeShippingField(shippings[i].TransactionEvidenceID)
+// 		r.SetHashToCache(SHIP_KEY, field, shippings[i])
+// 	}
+// }
 func (r *Redisful) InitShippings() {
 	var shippings []Shipping
 	err := dbx.Select(&shippings, "SELECT * FROM `shippings`")
@@ -25,9 +39,17 @@ func (r *Redisful) InitShippings() {
 		log.Println("failed to select shippings")
 		return
 	}
-	var field string
+	v := make([]interface{}, 0, 1000)
 	for i, _ := range shippings {
+		var field string
 		field = makeShippingField(shippings[i].TransactionEvidenceID)
-		r.SetHashToCache(SHIP_KEY, field, shippings[i])
+		v = append(v, field)
+		data, _ := json.Marshal(shippings[i])
+		v = append(v, data)
+		if i%1000 == 999 {
+			r.SetMultiHashToCache(SHIP_KEY, v)
+			v = make([]interface{}, 0, 1000)
+		}
 	}
+	r.SetMultiHashToCache(SHIP_KEY, v)
 }
