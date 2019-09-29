@@ -508,9 +508,10 @@ func postItemEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	timeNow := time.Now()
 	_, err = tx.Exec("UPDATE `items` SET `price` = ?, `updated_at` = ? WHERE `id` = ?",
 		price,
-		time.Now(),
+		timeNow,
 		itemID,
 	)
 	if err != nil {
@@ -521,22 +522,14 @@ func postItemEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tx.Get(&targetItem, "SELECT * FROM `items` WHERE `id` = ?", itemID)
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
-
 	tx.Commit()
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(&resItemEdit{
 		ItemID:        targetItem.ID,
-		ItemPrice:     targetItem.Price,
-		ItemCreatedAt: targetItem.CreatedAt.Unix(),
-		ItemUpdatedAt: targetItem.UpdatedAt.Unix(),
+		ItemPrice:     price,
+		ItemCreatedAt: targetItem.UpdatedAt.Unix(),
+		ItemUpdatedAt: timeNow.Unix(),
 	})
 }
 
@@ -641,7 +634,7 @@ func postBump(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(&resItemEdit{
 		ItemID:        targetItem.ID,
 		ItemPrice:     targetItem.Price,
-		ItemCreatedAt: targetItem.CreatedAt.Unix(),
-		ItemUpdatedAt: targetItem.UpdatedAt.Unix(),
+		ItemCreatedAt: now.Unix(),
+		ItemUpdatedAt: now.Unix(),
 	})
 }
