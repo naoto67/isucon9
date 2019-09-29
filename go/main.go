@@ -165,6 +165,10 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	redisful, _ := NewRedisful()
+	redisful.InitShippings()
+	redisful.Close()
+
 	res := resInitialize{
 		// キャンペーン実施時には還元率の設定を返す。詳しくはマニュアルを参照のこと。
 		Campaign: 0,

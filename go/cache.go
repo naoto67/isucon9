@@ -244,6 +244,18 @@ func (r *Redisful) SetHashToCache(key string, field, v interface{}) error {
 	return nil
 }
 
+func (r *Redisful) SetMultiHashToCache(key string, v []interface{}) error {
+	v = append([]interface{}{key}, v...)
+	_, err := r.Conn.Do("HMSET", v...)
+	if err != nil {
+		if err.Error() == WrongTypeError.Error() {
+			log.Fatal(err)
+		}
+		return err
+	}
+	return nil
+}
+
 func (r *Redisful) SetNXHashToCache(key string, field, v interface{}) (bool, error) {
 	data, err := json.Marshal(v)
 	if err != nil {
