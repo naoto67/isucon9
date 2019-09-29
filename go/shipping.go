@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 )
@@ -26,17 +25,9 @@ func (r *Redisful) InitShippings() {
 		log.Println("failed to select shippings")
 		return
 	}
-	v := make([]interface{}, 0, 1000)
+	var field string
 	for i, _ := range shippings {
-		var field string
 		field = makeShippingField(shippings[i].TransactionEvidenceID)
-		v = append(v, field)
-		data, _ := json.Marshal(shippings[i])
-		v = append(v, data)
-		if i%1000 == 999 {
-			r.SetMultiHashToCache(SHIP_KEY, v)
-			v = make([]interface{}, 0, 1000)
-		}
+		r.SetHashToCache(SHIP_KEY, field, shippings[i])
 	}
-	r.SetMultiHashToCache(SHIP_KEY, v)
 }
