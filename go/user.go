@@ -28,19 +28,15 @@ func FetchUserDictByItems(items []Item) (map[int64]User, error) {
 
 func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
 	var userIDs []string
-	fmt.Println("FetchUserSimpleDictByItems: items: ", items)
 	for _, v := range items {
 		if v.BuyerID != 0 {
 			userIDs = append(userIDs, fmt.Sprintf("%d", v.BuyerID))
 		}
 		userIDs = append(userIDs, fmt.Sprintf("%d", v.SellerID))
 	}
-	fmt.Println("FetchUserSimpleDictByItems: userIDs: ", userIDs)
 	var users []UserSimple
 	query := fmt.Sprintf("SELECT id, account_name, num_sell_items FROM users WHERE id IN (%s)", strings.Join(userIDs, ","))
-	fmt.Println("FetchUserSimpleDictByItems: query: ", query)
 	err := dbx.Select(&users, query)
-	fmt.Println("FetchUserSimpleDictByItems: users: ", users)
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +45,5 @@ func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
 		dict[v.ID] = v
 	}
 
-	fmt.Println("FetchUserSimpleDictByItems: dict: ", dict)
 	return dict, nil
 }
