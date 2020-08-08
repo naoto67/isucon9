@@ -318,7 +318,6 @@ func getNewItems(w http.ResponseWriter, r *http.Request) {
 			ItemStatusOnSale,
 			ItemStatusSoldOut,
 			time.Unix(createdAt, 0),
-			time.Unix(createdAt, 0),
 			itemID,
 			ItemsPerPage+1,
 		)
@@ -667,7 +666,6 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			"SELECT * FROM `items` WHERE (`seller_id` = ? OR `buyer_id` = ?) AND (`created_at` <= ? AND `id` < ?) ORDER BY `created_at` DESC, `id` DESC LIMIT ?",
 			user.ID,
 			user.ID,
-			time.Unix(createdAt, 0),
 			time.Unix(createdAt, 0),
 			itemID,
 			TransactionsPerPage+1,
