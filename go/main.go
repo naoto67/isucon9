@@ -767,6 +767,8 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		ts, ok := tsDict[item.ID]
 		if !ok {
 			fmt.Println("getTransactions: 769: ", ts, ok)
+			fmt.Println("getTransactions: tsDict: ", tsDict)
+			fmt.Println("getTransactions: itemID: ", item.ID)
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
 			tx.Rollback()
 			return
