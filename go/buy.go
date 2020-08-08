@@ -81,6 +81,30 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		tx.Rollback()
 		return
 	}
+	scRes := make(chan *APIShipmentCreateRes)
+	scErr := make(chan error)
+	go func() {
+		scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
+			ToAddress:   buyer.Address,
+			ToName:      buyer.AccountName,
+			FromAddress: seller.Address,
+			FromName:    seller.AccountName,
+		})
+		scRes <- scr
+		scErr <- err
+	}()
+	psRes := make(chan *APIPaymentServiceTokenRes)
+	psErr := make(chan error)
+	go func() {
+		pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
+			ShopID: PaymentServiceIsucariShopID,
+			Token:  rb.Token,
+			APIKey: PaymentServiceIsucariAPIKey,
+			Price:  targetItem.Price,
+		})
+		psRes <- pstr
+		psErr <- err
+	}()
 
 	result, err := tx.Exec("INSERT INTO `transaction_evidences` (`seller_id`, `buyer_id`, `status`, `item_id`, `item_name`, `item_price`, `item_description`,`item_category_id`,`item_root_category_id`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		targetItem.SellerID,
@@ -123,13 +147,9 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		tx.Rollback()
 		return
 	}
+	scr := <-scRes
+	err = <-scErr
 
-	scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
-		ToAddress:   buyer.Address,
-		ToName:      buyer.AccountName,
-		FromAddress: seller.Address,
-		FromName:    seller.AccountName,
-	})
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
@@ -137,13 +157,29 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+	_, err = tx.Exec("INSERT INTO `shippings` (`transaction_evidence_id`, `status`, `item_name`, `item_id`, `reserve_id`, `reserve_time`, `to_address`, `to_name`, `from_address`, `from_name`, `img_binary`) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+		transactionEvidenceID,
+		ShippingsStatusInitial,
+		targetItem.Name,
+		targetItem.ID,
+		scr.ReserveID,
+		scr.ReserveTime,
+		buyer.Address,
+		buyer.AccountName,
+		seller.Address,
+		seller.AccountName,
+		"",
+	)
+	if err != nil {
+		log.Print(err)
 
-	pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
-		ShopID: PaymentServiceIsucariShopID,
-		Token:  rb.Token,
-		APIKey: PaymentServiceIsucariAPIKey,
-		Price:  targetItem.Price,
-	})
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		tx.Rollback()
+		return
+	}
+
+	pstr := <-psRes
+	err = <-psErr
 	if err != nil {
 		log.Print(err)
 
@@ -166,27 +202,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 
 	if pstr.Status != "ok" {
 		outputErrorMsg(w, http.StatusBadRequest, "想定外のエラー")
-		tx.Rollback()
-		return
-	}
-
-	_, err = tx.Exec("INSERT INTO `shippings` (`transaction_evidence_id`, `status`, `item_name`, `item_id`, `reserve_id`, `reserve_time`, `to_address`, `to_name`, `from_address`, `from_name`, `img_binary`) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-		transactionEvidenceID,
-		ShippingsStatusInitial,
-		targetItem.Name,
-		targetItem.ID,
-		scr.ReserveID,
-		scr.ReserveTime,
-		buyer.Address,
-		buyer.AccountName,
-		seller.Address,
-		seller.AccountName,
-		"",
-	)
-	if err != nil {
-		log.Print(err)
-
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		tx.Rollback()
 		return
 	}
