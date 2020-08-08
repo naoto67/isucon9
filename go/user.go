@@ -28,6 +28,7 @@ func FetchUserDictByItems(items []Item) (map[int64]User, error) {
 
 func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
 	var userIDs []string
+	fmt.Println("FetchUserSimpleDictByItems: items: ", items)
 	for _, v := range items {
 		if v.BuyerID != 0 {
 			userIDs = append(userIDs, fmt.Sprintf("%d", v.BuyerID))
@@ -44,5 +45,6 @@ func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
 		dict[v.ID] = v
 	}
 
+	fmt.Println("FetchUserSimpleDictByItems: dict: ", dict)
 	return dict, nil
 }
