@@ -65,6 +65,7 @@ func FetchTransactionDictByItems(items []Item) (map[int64]TS, error) {
 		}
 	}
 	fmt.Println("FetchTransactionDictByItems: dict: ", dict)
+	fmt.Println("FetchTransactionDictByItems: len(dict): ", len(dict))
 
 	return dict, nil
 }
