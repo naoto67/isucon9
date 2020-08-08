@@ -720,6 +720,8 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	for _, item := range items {
 		seller, ok := userDict[item.SellerID]
 		if !ok {
+			fmt.Println("seller not found")
+			fmt.Println(userDict)
 			outputErrorMsg(w, http.StatusNotFound, "seller not found")
 			tx.Rollback()
 			return
@@ -753,7 +755,9 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		if item.BuyerID != 0 {
 			buyer, ok := userDict[item.BuyerID]
 			if !ok {
-				outputErrorMsg(w, http.StatusNotFound, "seller not found")
+				fmt.Println("buyer not found")
+				fmt.Println(userDict)
+				outputErrorMsg(w, http.StatusNotFound, "buyer not found")
 				tx.Rollback()
 				return
 			}
