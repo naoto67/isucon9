@@ -718,7 +718,6 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		tx.Rollback()
 		return
 	}
-	fmt.Println(tsDict)
 	itemDetails := []ItemDetail{}
 	for _, item := range items {
 		seller, ok := userDict[item.SellerID]
