@@ -711,6 +711,13 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		tx.Rollback()
 		return
 	}
+	tsDict, err := FetchTransactionDictByItems(items)
+	if err != nil {
+		log.Print(err)
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		tx.Rollback()
+		return
+	}
 	itemDetails := []ItemDetail{}
 	for _, item := range items {
 		seller, ok := userDict[item.SellerID]
@@ -756,30 +763,17 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			itemDetail.Buyer = &buyer
 		}
 
-		transactionEvidence := TransactionEvidence{}
-		err = tx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", item.ID)
-		if err != nil && err != sql.ErrNoRows {
-			// It's able to ignore ErrNoRows
-			log.Print(err)
+		ts, ok := tsDict[item.ID]
+		if !ok {
 			outputErrorMsg(w, http.StatusInternalServerError, "db error")
 			tx.Rollback()
 			return
 		}
+		transactionEvidence := ts.TransactionEvidence
 
 		if transactionEvidence.ID > 0 {
-			shipping := Shipping{}
-			err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ?", transactionEvidence.ID)
-			if err == sql.ErrNoRows {
-				outputErrorMsg(w, http.StatusNotFound, "shipping not found")
-				tx.Rollback()
-				return
-			}
-			if err != nil {
-				log.Print(err)
-				outputErrorMsg(w, http.StatusInternalServerError, "db error")
-				tx.Rollback()
-				return
-			}
+			shipping := ts.Shipping
+
 			ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
 				ReserveID: shipping.ReserveID,
 			})
