@@ -15,7 +15,9 @@ func FetchTransactionDictByItems(items []Item) (map[int64]TS, error) {
 	for _, v := range items {
 		itemIDs = append(itemIDs, fmt.Sprintf("%d", v.ID))
 	}
+	fmt.Println("FetchTransactionDictByItems: itemIDs: ", itemIDs)
 	query := fmt.Sprintf("SELECT * FROM `transaction_evidences` t INNER JOIN `shippings` s ON t.id = s.transaction_evidence_id WHERE t.`item_id` IN (%s)", strings.Join(itemIDs, ","))
+	fmt.Println("FetchTransactionDictByItems: query: ", query)
 	rows, err := dbx.Query(query)
 	if err != nil {
 		return nil, err
@@ -62,6 +64,7 @@ func FetchTransactionDictByItems(items []Item) (map[int64]TS, error) {
 			Shipping:            s,
 		}
 	}
+	fmt.Println("FetchTransactionDictByItems: dict: ", dict)
 
 	return dict, nil
 }
