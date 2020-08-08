@@ -46,7 +46,8 @@ CREATE TABLE `transaction_evidences` (
   `item_category_id` int unsigned NOT NULL,
   `item_root_category_id` int unsigned NOT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX item_id_idx(`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4;
 
 DROP TABLE IF EXISTS `shippings`;
