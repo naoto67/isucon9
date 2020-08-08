@@ -1184,18 +1184,27 @@ func postComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	transactionEvidence := TransactionEvidence{}
-	err = dbx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", itemID)
-	if err == sql.ErrNoRows {
+	var t TransactionEvidence
+	var s Shipping
+	err = dbx.QueryRow("SELECT * FROM `transaction_evidences` t INNER JOIN shippings s ON t.id = s.transaction_evidence_id WHERE t.item_id = ?", itemID).Scan(
+		&t.ID, &t.SellerID, &t.BuyerID, &t.Status, &t.ItemID, &t.ItemName, &t.ItemPrice, &t.ItemDescription, &t.ItemCategoryID, &t.ItemRootCategoryID, &t.CreatedAt, &t.UpdatedAt,
+		&s.TransactionEvidenceID, &s.Status, &s.ItemName, &s.ItemID, &s.ReserveID, &s.ReserveTime, &s.ToAddress, &s.ToName, &s.FromAddress, &s.FromName, &s.ImgBinary, &s.CreatedAt, &s.UpdatedAt)
+	if err != nil {
 		outputErrorMsg(w, http.StatusNotFound, "transaction_evidence not found")
 		return
 	}
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+	transactionEvidence := t
+	shipping := s
 
-		return
-	}
+	ssrRes := make(chan *APIShipmentStatusRes)
+	ssrErr := make(chan error)
+	go func() {
+		ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
+			ReserveID: shipping.ReserveID,
+		})
+		ssrRes <- ssr
+		ssrErr <- err
+	}()
 
 	if transactionEvidence.BuyerID != buyer.ID {
 		outputErrorMsg(w, http.StatusForbidden, "権限がありません")
@@ -1223,37 +1232,14 @@ func postComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ? FOR UPDATE", itemID)
-	if err == sql.ErrNoRows {
-		outputErrorMsg(w, http.StatusNotFound, "transaction_evidences not found")
-		tx.Rollback()
-		return
-	}
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
-
 	if transactionEvidence.Status != TransactionEvidenceStatusWaitDone {
 		outputErrorMsg(w, http.StatusForbidden, "準備ができていません")
 		tx.Rollback()
 		return
 	}
 
-	shipping := Shipping{}
-	err = tx.Get(&shipping, "SELECT * FROM `shippings` WHERE `transaction_evidence_id` = ? FOR UPDATE", transactionEvidence.ID)
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
-
-	ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
-		ReserveID: shipping.ReserveID,
-	})
+	ssr := <-ssrRes
+	err = <-ssrErr
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
@@ -1261,7 +1247,6 @@ func postComplete(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-
 	if !(ssr.Status == ShippingsStatusDone) {
 		outputErrorMsg(w, http.StatusBadRequest, "shipment service側で配送完了になっていません")
 		tx.Rollback()
