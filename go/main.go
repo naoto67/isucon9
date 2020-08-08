@@ -764,17 +764,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			itemDetail.Buyer = &buyer
 		}
 
-		ts, ok := tsDict[item.ID]
-		if !ok {
-			fmt.Println("getTransactions: 769: ", ts, ok)
-			fmt.Println("getTransactions: itemID: ", item.ID)
-			for k, _ := range tsDict {
-				fmt.Println("getTransactions: tsDict key: ", k)
-			}
-			outputErrorMsg(w, http.StatusInternalServerError, "db error")
-			tx.Rollback()
-			return
-		}
+		ts, _ := tsDict[item.ID]
 		transactionEvidence := ts.TransactionEvidence
 
 		if transactionEvidence.ID > 0 {
