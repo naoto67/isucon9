@@ -31,14 +31,10 @@ func NewRedis() {
 	}
 }
 
-func (r RedisClient) HMSET(key string, values ...interface{}) error {
+func (r RedisClient) HMSET(key string, m map[string][]byte) error {
 	conn := r.pool.Get()
 	defer conn.Close()
-	v := make([]interface{}, len(values))
-	v = append(v, key)
-	v = append(v, values...)
-
-	_, err := conn.Do("HMSET", v)
+	_, err := conn.Do("HMSET", redis.Args{}.Add(USER_KEY).AddFlat(m)...)
 	return err
 }
 

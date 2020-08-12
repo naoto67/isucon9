@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -60,18 +61,16 @@ func InitUsersCache() error {
 		return err
 	}
 
-	var values []interface{}
+	m := make(map[string][]byte)
 
 	for _, v := range users {
 		b, err := json.Marshal(v)
 		if err != nil {
 			return err
 		}
-
-		values = append(values, v.ID)
-		values = append(values, b)
+		m[strconv.Itoa(int(v.ID))] = b
 	}
 
-	err = redisClient.HMSET(USER_KEY, values)
+	err = redisClient.HMSET(USER_KEY, m)
 	return err
 }
