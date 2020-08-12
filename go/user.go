@@ -69,7 +69,7 @@ func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
 }
 
 func InitUsersCache() error {
-	var users []User
+	var users []CacheUser
 	err := dbx.Select(&users, "SELECT * FROM users")
 	if err != nil {
 		return err
@@ -115,7 +115,16 @@ func GetUserCacheByID(id int64) (*User, error) {
 }
 
 func UpdateUserCache(user User) error {
-	b, err := json.Marshal(user)
+	u := CacheUser{
+		ID:             user.ID,
+		AccountName:    user.AccountName,
+		HashedPassword: user.HashedPassword,
+		Address:        user.Address,
+		NumSellItems:   user.NumSellItems,
+		LastBump:       user.LastBump,
+		CreatedAt:      user.CreatedAt,
+	}
+	b, err := json.Marshal(u)
 	if err != nil {
 		return err
 	}
