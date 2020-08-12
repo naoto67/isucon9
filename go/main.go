@@ -266,7 +266,8 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 	}
 
 	redisClient.FLUSH()
-	InitUsersCache()
+	err = InitUsersCache()
+	fmt.Println("InitUsersCache: ", err)
 
 	res := resInitialize{
 		// キャンペーン実施時には還元率の設定を返す。詳しくはマニュアルを参照のこと。
