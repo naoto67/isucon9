@@ -13,7 +13,7 @@ const (
 )
 
 func FetchUserDictByItems(items []Item) (map[int64]User, error) {
-	var userIDs []string
+	var userIDs []interface{}
 	for _, v := range items {
 		if v.BuyerID != 0 {
 			userIDs = append(userIDs, fmt.Sprintf("%s%d", USER_KEY_PREFIX, v.BuyerID))
@@ -47,7 +47,7 @@ func FetchUserDictByItems(items []Item) (map[int64]User, error) {
 }
 
 func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
-	var userIDs []string
+	var userIDs []interface{}
 	for _, v := range items {
 		if v.BuyerID != 0 {
 			userIDs = append(userIDs, fmt.Sprintf("%s%d", USER_KEY_PREFIX, v.BuyerID))

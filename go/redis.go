@@ -58,11 +58,11 @@ func (r RedisClient) MSET(m map[string][]byte) error {
 	return err
 }
 
-func (r RedisClient) MGET(key []string) ([][]byte, error) {
+func (r RedisClient) MGET(key []interface{}) ([][]byte, error) {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	return redis.ByteSlices(conn.Do("MGET", redis.Args{}.AddFlat(key)))
+	return redis.ByteSlices(conn.Do("MGET", redis.Args{}.AddFlat(key)...))
 }
 
 func (r RedisClient) HSET(key, field string, value interface{}) error {
