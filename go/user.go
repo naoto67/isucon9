@@ -26,12 +26,20 @@ func FetchUserDictByItems(items []Item) (map[int64]User, error) {
 	}
 	dict := map[int64]User{}
 	for _, v := range b {
-		var u User
+		var u CacheUser
 		err = json.Unmarshal(v, &u)
 		if err != nil {
 			return nil, err
 		}
-		dict[u.ID] = u
+		dict[u.ID] = User{
+			ID:             u.ID,
+			AccountName:    u.AccountName,
+			HashedPassword: u.HashedPassword,
+			Address:        u.Address,
+			NumSellItems:   u.NumSellItems,
+			LastBump:       u.LastBump,
+			CreatedAt:      u.CreatedAt,
+		}
 
 	}
 
@@ -109,9 +117,18 @@ func GetUserCacheByID(id int64) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	var user User
+	var user CacheUser
 	err = json.Unmarshal(b, &user)
-	return &user, err
+	u := User{
+		ID:             user.ID,
+		AccountName:    user.AccountName,
+		HashedPassword: user.HashedPassword,
+		Address:        user.Address,
+		NumSellItems:   user.NumSellItems,
+		LastBump:       user.LastBump,
+		CreatedAt:      user.CreatedAt,
+	}
+	return &u, err
 }
 
 func UpdateUserCache(user User) error {
