@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -15,11 +14,13 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&rb)
 	if err != nil {
 		outputErrorMsg(w, http.StatusBadRequest, "json decode error")
+		log.Print(err)
 		return
 	}
 
 	if rb.CSRFToken != getCSRFToken(r) {
 		outputErrorMsg(w, http.StatusUnprocessableEntity, "csrf token error")
+		log.Print(err)
 
 		return
 	}
@@ -27,6 +28,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	buyer, errCode, errMsg := getUser(r)
 	if errMsg != "" {
 		outputErrorMsg(w, errCode, errMsg)
+		log.Print(errMsg)
 		return
 	}
 
@@ -34,11 +36,11 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	err = dbx.Get(&targetItem, "SELECT * FROM `items` WHERE `id` = ?", rb.ItemID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "item not found")
+		log.Print(err)
 		return
 	}
 	if err != nil {
 		log.Print(err)
-		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
@@ -46,33 +48,36 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 
 	if targetItem.Status != ItemStatusOnSale {
 		outputErrorMsg(w, http.StatusForbidden, "item is not for sale")
+		log.Print("item is not for sals")
 		return
 	}
 
 	if targetItem.SellerID == buyer.ID {
 		outputErrorMsg(w, http.StatusForbidden, "自分の商品は買えません")
+		log.Print("自分の商品は買えません")
 		return
 	}
 
 	seller, err := GetUserCacheByID(targetItem.SellerID)
 	if seller == nil {
 		outputErrorMsg(w, http.StatusNotFound, "seller not found")
+		log.Print("seller not found")
 		return
 	}
 	if err != nil {
 		log.Print(err)
-		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		log.Print(err)
 		return
 	}
 
 	category, err := getCategoryByID(dbx, targetItem.CategoryID)
 	if err != nil {
 		log.Print(err)
-		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "category id error")
+		log.Print(err)
 		return
 	}
 	tx := dbx.MustBegin()
@@ -88,20 +93,23 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		tx.Rollback()
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		log.Print(err)
 		return
 	}
 	cnt, err := result.RowsAffected()
 	if err != nil {
 		log.Print(err)
-		fmt.Println(err)
+
 		tx.Rollback()
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		log.Print(err)
 		return
 	}
 	if cnt == 0 {
 		tx.Rollback()
 		outputErrorMsg(w, http.StatusForbidden, "item is not for sale")
+		log.Print("item is not for sale")
 		return
 	}
 	scRes := make(chan *APIShipmentCreateRes)
@@ -142,9 +150,9 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		log.Print(err)
-		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		log.Print(err)
 		tx.Rollback()
 		return
 	}
@@ -152,9 +160,9 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	transactionEvidenceID, err := result.LastInsertId()
 	if err != nil {
 		log.Print(err)
-		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		log.Print(err)
 		tx.Rollback()
 		return
 	}
@@ -164,8 +172,9 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Print(err)
-		fmt.Println(err)
+
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
+		log.Print(err)
 		tx.Rollback()
 
 		return
@@ -187,6 +196,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		log.Print(err)
 		tx.Rollback()
 		return
 	}
@@ -197,24 +207,28 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "payment service is failed")
+		log.Print(err)
 		tx.Rollback()
 		return
 	}
 
 	if pstr.Status == "invalid" {
 		outputErrorMsg(w, http.StatusBadRequest, "カード情報に誤りがあります")
+		log.Print("カード情報に誤りがあります")
 		tx.Rollback()
 		return
 	}
 
 	if pstr.Status == "fail" {
 		outputErrorMsg(w, http.StatusBadRequest, "カードの残高が足りません")
+		log.Print("カードの残高が足りません")
 		tx.Rollback()
 		return
 	}
 
 	if pstr.Status != "ok" {
 		outputErrorMsg(w, http.StatusBadRequest, "想定外のエラー")
+		log.Print("想定外のエラー")
 		tx.Rollback()
 		return
 	}
