@@ -71,6 +71,6 @@ func InitUsersCache() error {
 		m[fmt.Sprintf("%s%d", USER_KEY_PREFIX, v.ID)] = b
 	}
 
-	err = redisClient.MSET(USER_KEY, m)
+	err = redisClient.MSET(m)
 	return err
 }
