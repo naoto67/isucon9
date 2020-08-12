@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -37,6 +38,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Print(err)
+		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
@@ -59,6 +61,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Print(err)
+		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
@@ -67,6 +70,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	category, err := getCategoryByID(dbx, targetItem.CategoryID)
 	if err != nil {
 		log.Print(err)
+		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "category id error")
 		return
@@ -89,6 +93,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	cnt, err := result.RowsAffected()
 	if err != nil {
 		log.Print(err)
+		fmt.Println(err)
 		tx.Rollback()
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
@@ -137,6 +142,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		log.Print(err)
+		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		tx.Rollback()
@@ -146,6 +152,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	transactionEvidenceID, err := result.LastInsertId()
 	if err != nil {
 		log.Print(err)
+		fmt.Println(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		tx.Rollback()
@@ -157,6 +164,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Print(err)
+		fmt.Println(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
 		tx.Rollback()
 
