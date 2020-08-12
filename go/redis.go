@@ -38,7 +38,14 @@ func (r RedisClient) SET(key string, value interface{}) error {
 	return err
 }
 
-func (r RedisClient) GET(key, field string, value interface{}) ([]byte, error) {
+func (r RedisClient) INCR(key string) error {
+	conn := r.pool.Get()
+	defer conn.Close()
+	_, err := conn.Do("INCR", key)
+	return err
+}
+
+func (r RedisClient) GET(key string) ([]byte, error) {
 	conn := r.pool.Get()
 	defer conn.Close()
 	return redis.Bytes(conn.Do("GET", key))
@@ -51,7 +58,7 @@ func (r RedisClient) MSET(m map[string][]byte) error {
 	return err
 }
 
-func (r RedisClient) MGET(key string, fields ...interface{}) ([][]byte, error) {
+func (r RedisClient) MGET(key []string) ([][]byte, error) {
 	conn := r.pool.Get()
 	defer conn.Close()
 

@@ -63,6 +63,8 @@ var (
 	templates *template.Template
 	dbx       *sqlx.DB
 	store     sessions.Store
+
+	defaultLastBump, _ = time.Parse("2000-01-01 00:00:00", "2000-01-01 00:00:00")
 )
 
 func init() {
@@ -182,8 +184,9 @@ func getUser(r *http.Request) (user User, errCode int, errMsg string) {
 		return user, http.StatusNotFound, "no session"
 	}
 
-	err := dbx.Get(&user, "SELECT * FROM `users` WHERE `id` = ?", userID)
-	if err == sql.ErrNoRows {
+	uID := userID.(int64)
+	u, err := GetUserCacheByID(uID)
+	if u == nil {
 		return user, http.StatusNotFound, "user not found"
 	}
 	if err != nil {
@@ -191,14 +194,16 @@ func getUser(r *http.Request) (user User, errCode int, errMsg string) {
 		return user, http.StatusInternalServerError, "db error"
 	}
 
-	return user, http.StatusOK, ""
+	return *u, http.StatusOK, ""
 }
 
 func getUserSimpleByID(q sqlx.Queryer, userID int64) (userSimple UserSimple, err error) {
-	user := User{}
-	err = sqlx.Get(q, &user, "SELECT * FROM `users` WHERE `id` = ?", userID)
+	user, err := GetUserCacheByID(userID)
 	if err != nil {
 		return userSimple, err
+	}
+	if user == nil {
+		return userSimple, nil
 	}
 	userSimple.ID = user.ID
 	userSimple.AccountName = user.AccountName
@@ -1380,22 +1385,13 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx := dbx.MustBegin()
-
-	seller := User{}
-	err = tx.Get(&seller, "SELECT * FROM `users` WHERE `id` = ? FOR UPDATE", user.ID)
-	if err == sql.ErrNoRows {
+	seller, err := GetUserCacheByID(user.ID)
+	if seller == nil {
 		outputErrorMsg(w, http.StatusNotFound, "user not found")
-		tx.Rollback()
-		return
-	}
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
 		return
 	}
 
+	tx := dbx.MustBegin()
 	result, err := tx.Exec("INSERT INTO `items` (`seller_id`, `status`, `name`, `price`, `description`,`image_name`,`category_id`) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		seller.ID,
 		ItemStatusOnSale,
@@ -1421,14 +1417,12 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	_, err = tx.Exec("UPDATE `users` SET `num_sell_items`=?, `last_bump`=? WHERE `id`=?",
-		seller.NumSellItems+1,
-		now,
-		seller.ID,
-	)
+	user.LastBump = now
+	user.NumSellItems = seller.NumSellItems + 1
+	err = UpdateUserCache(user)
 	if err != nil {
 		log.Print(err)
-
+		tx.Rollback()
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
@@ -1490,20 +1484,7 @@ func postBump(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	seller := User{}
-	err = tx.Get(&seller, "SELECT * FROM `users` WHERE `id` = ? FOR UPDATE", user.ID)
-	if err == sql.ErrNoRows {
-		outputErrorMsg(w, http.StatusNotFound, "user not found")
-		tx.Rollback()
-		return
-	}
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
-
+	seller := user
 	now := time.Now()
 	// last_bump + 3s > now
 	if seller.LastBump.Add(BumpChargeSeconds).After(now) {
@@ -1523,10 +1504,8 @@ func postBump(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tx.Exec("UPDATE `users` SET `last_bump`=? WHERE id=?",
-		now,
-		seller.ID,
-	)
+	seller.LastBump = now
+	err = UpdateUserCache(seller)
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
@@ -1588,9 +1567,8 @@ func postLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u := User{}
-	err = dbx.Get(&u, "SELECT * FROM `users` WHERE `account_name` = ?", accountName)
-	if err == sql.ErrNoRows {
+	u, err := GetUserCacheByAccountName(accountName)
+	if u == nil {
 		outputErrorMsg(w, http.StatusUnauthorized, "アカウント名かパスワードが間違えています")
 		return
 	}
@@ -1654,11 +1632,22 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := dbx.Exec("INSERT INTO `users` (`account_name`, `hashed_password`, `address`) VALUES (?, ?, ?)",
-		accountName,
-		hashedPassword,
-		address,
-	)
+	cnt, err := GetUserCount()
+	if err != nil {
+		log.Print(err)
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	user := User{
+		ID:             int64(cnt + 1),
+		AccountName:    accountName,
+		HashedPassword: hashedPassword,
+		NumSellItems:   0,
+		Address:        address,
+		LastBump:       defaultLastBump,
+		CreatedAt:      time.Now(),
+	}
+	err = UpdateUserCache(user)
 	if err != nil {
 		log.Print(err)
 
@@ -1666,23 +1655,15 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := result.LastInsertId()
-
 	if err != nil {
 		log.Print(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
-	}
-
-	u := User{
-		ID:          userID,
-		AccountName: accountName,
-		Address:     address,
 	}
 
 	session := getSession(r)
-	session.Values["user_id"] = u.ID
+	session.Values["user_id"] = user.ID
 	session.Values["csrf_token"] = secureRandomStr(20)
 	if err = session.Save(r, w); err != nil {
 		log.Print(err)
@@ -1691,7 +1672,7 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
-	json.NewEncoder(w).Encode(u)
+	json.NewEncoder(w).Encode(user)
 }
 
 func getReports(w http.ResponseWriter, r *http.Request) {
