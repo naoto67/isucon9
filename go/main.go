@@ -116,6 +116,8 @@ func main() {
 	}
 	defer dbx.Close()
 
+	NewRedis()
+
 	mux := goji.NewMux()
 
 	// API
@@ -262,6 +264,9 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
+
+	redisClient.FLUSH()
+	InitUsersCache()
 
 	res := resInitialize{
 		// キャンペーン実施時には還元率の設定を返す。詳しくはマニュアルを参照のこと。

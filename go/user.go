@@ -1,8 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+)
+
+const (
+	USER_KEY = "users"
 )
 
 func FetchUserDictByItems(items []Item) (map[int64]User, error) {
@@ -46,4 +51,27 @@ func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
 	}
 
 	return dict, nil
+}
+
+func InitUsersCache() error {
+	var users []User
+	err := dbx.Select(&users, "SELECT * FROM users")
+	if err != nil {
+		return err
+	}
+
+	var values []interface{}
+
+	for _, v := range users {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+
+		values = append(values, v.ID)
+		values = append(values, b)
+	}
+
+	err = redisClient.HMSET(USER_KEY, values)
+	return err
 }
