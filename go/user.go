@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 )
 
 const (
-	USER_KEY = "users"
+	USER_KEY_PREFIX = "u:"
+	USER_KEY        = "users"
 )
 
 func FetchUserDictByItems(items []Item) (map[int64]User, error) {
@@ -68,9 +68,9 @@ func InitUsersCache() error {
 		if err != nil {
 			return err
 		}
-		m[strconv.Itoa(int(v.ID))] = b
+		m[fmt.Sprintf("%s%d", USER_KEY_PREFIX, v.ID)] = b
 	}
 
-	err = redisClient.HMSET(USER_KEY, m)
+	err = redisClient.MSET(USER_KEY, m)
 	return err
 }

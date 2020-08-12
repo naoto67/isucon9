@@ -31,10 +31,50 @@ func NewRedis() {
 	}
 }
 
+func (r RedisClient) SET(key string, value interface{}) error {
+	conn := r.pool.Get()
+	defer conn.Close()
+	_, err := conn.Do("SET", key, value)
+	return err
+}
+
+func (r RedisClient) GET(key, field string, value interface{}) ([]byte, error) {
+	conn := r.pool.Get()
+	defer conn.Close()
+	return redis.Bytes(conn.Do("GET", key))
+}
+
+func (r RedisClient) MSET(key string, m map[string][]byte) error {
+	conn := r.pool.Get()
+	defer conn.Close()
+	_, err := conn.Do("MSET", redis.Args{}.Add(key).AddFlat(m)...)
+	return err
+}
+
+func (r RedisClient) MGET(key string, fields ...interface{}) ([][]byte, error) {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	return redis.ByteSlices(conn.Do("MGET", key))
+}
+
+func (r RedisClient) HSET(key, field string, value interface{}) error {
+	conn := r.pool.Get()
+	defer conn.Close()
+	_, err := conn.Do("HSET", key, field, value)
+	return err
+}
+
+func (r RedisClient) HGET(key, field string, value interface{}) ([]byte, error) {
+	conn := r.pool.Get()
+	defer conn.Close()
+	return redis.Bytes(conn.Do("HGET", key, field))
+}
+
 func (r RedisClient) HMSET(key string, m map[string][]byte) error {
 	conn := r.pool.Get()
 	defer conn.Close()
-	_, err := conn.Do("HMSET", redis.Args{}.Add(USER_KEY).AddFlat(m)...)
+	_, err := conn.Do("HMSET", redis.Args{}.Add(key).AddFlat(m)...)
 	return err
 }
 
