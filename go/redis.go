@@ -38,7 +38,7 @@ func (r RedisClient) HMSET(key string, values ...interface{}) error {
 	v = append(v, key)
 	v = append(v, values...)
 
-	_, err := conn.Do("HMSET", v...)
+	_, err := conn.Do("HMSET", v)
 	return err
 }
 
