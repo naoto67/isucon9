@@ -39,6 +39,12 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	ssrStatus := make(chan string)
 	ssrErr := make(chan error)
 	go func() {
+		if s.Status == ShippingsStatusDone {
+			ssrStatus <- ShippingsStatusDone
+			ssrErr <- nil
+
+			return
+		}
 		ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
 			ReserveID: s.ReserveID,
 		})
@@ -62,7 +68,7 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	tx := dbx.MustBegin()
 
 	item := Item{}
-	err = tx.Get(&item, "SELECT * FROM `items` WHERE `id` = ? FOR UPDATE", itemID)
+	err = tx.Get(&item, "SELECT * FROM `items` WHERE `id` = ?", itemID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "items not found")
 		tx.Rollback()
@@ -103,19 +109,21 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tx.Exec("UPDATE `shippings` SET `status` = ?, `updated_at` = ? WHERE `transaction_evidence_id` = ?",
-		status,
-		time.Now(),
-		transactionEvidence.ID,
-	)
-	if err != nil {
-		log.Print(err)
+	if s.Status != status {
+		_, err = tx.Exec("UPDATE `shippings` SET `status` = ?, `updated_at` = ? WHERE `transaction_evidence_id` = ?",
+			status,
+			time.Now(),
+			transactionEvidence.ID,
+		)
+		if err != nil {
+			log.Print(err)
 
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
+			outputErrorMsg(w, http.StatusInternalServerError, "db error")
+			tx.Rollback()
+			return
+		}
+
 	}
-
 	_, err = tx.Exec("UPDATE `transaction_evidences` SET `status` = ?, `updated_at` = ? WHERE `id` = ?",
 		TransactionEvidenceStatusWaitDone,
 		time.Now(),
