@@ -58,9 +58,10 @@ func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	dict := map[int64]UserSimple{}
 	for i, _ := range b {
-		var u User
+		var u CacheUser
 		err = json.Unmarshal(b[i], &u)
 		if err != nil {
 			return nil, err
