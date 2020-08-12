@@ -34,8 +34,11 @@ func NewRedis() {
 func (r RedisClient) HMSET(key string, values ...interface{}) error {
 	conn := r.pool.Get()
 	defer conn.Close()
+	v := make([]interface{}, len(values))
+	v = append(v, key)
+	v = append(v, values...)
 
-	_, err := conn.Do("HMSET", key, values)
+	_, err := conn.Do("HMSET", v...)
 	return err
 }
 
