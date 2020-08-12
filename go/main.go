@@ -929,51 +929,30 @@ func postItemEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx := dbx.MustBegin()
-	err = tx.Get(&targetItem, "SELECT * FROM `items` WHERE `id` = ? FOR UPDATE", itemID)
-	if err != nil {
-		log.Print(err)
-
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
-
 	if targetItem.Status != ItemStatusOnSale {
 		outputErrorMsg(w, http.StatusForbidden, "販売中の商品以外編集できません")
-		tx.Rollback()
 		return
 	}
-
-	_, err = tx.Exec("UPDATE `items` SET `price` = ?, `updated_at` = ? WHERE `id` = ?",
+	now := time.Now()
+	_, err = dbx.Exec("UPDATE `items` SET `price` = ?, `updated_at` = ? WHERE `id` = ? AND status = ?",
 		price,
-		time.Now(),
+		now,
 		itemID,
+		ItemStatusOnSale,
 	)
 	if err != nil {
 		log.Print(err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
 		return
 	}
-
-	err = tx.Get(&targetItem, "SELECT * FROM `items` WHERE `id` = ?", itemID)
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
-
-	tx.Commit()
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(&resItemEdit{
 		ItemID:        targetItem.ID,
-		ItemPrice:     targetItem.Price,
+		ItemPrice:     price,
 		ItemCreatedAt: targetItem.CreatedAt.Unix(),
-		ItemUpdatedAt: targetItem.UpdatedAt.Unix(),
+		ItemUpdatedAt: now.Unix(),
 	})
 }
 
