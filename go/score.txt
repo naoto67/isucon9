@@ -3,3 +3,6 @@
 
 2020/08/22 05:25:53 main.go:212: 25340 2500
 {"pass":true,"score":22840,"campaign":1,"language":"Go","messages":["/users/transactions.json の商品数が正しくありません (user_id: 1271)","/users/transactions.json の商品数が正しくありません (user_id: 1671)","/users/transactions.json の商品数が正しくありません (user_id: 593)","商品 (item_id: 50036) に対して全ユーザーが購入に失敗しました","商品 (item_id: 50128) に対して全ユーザーが購入に失敗しました"]}
+
+2020/08/22 06:40:30 main.go:212: 31640 1500
+{"pass":true,"score":30140,"campaign":2,"language":"Go","messages":["/users/transactions.json の商品数が正しくありません (user_id: 3210)","/users/transactions.json の商品数が正しくありません (user_id: 3648)","/users/transactions.json の商品数が正しくありません (user_id: 486)"]}
