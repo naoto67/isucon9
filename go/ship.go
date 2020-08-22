@@ -153,12 +153,18 @@ func postShip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ok := LockItem(itemID)
+	if !ok {
+		outputErrorMsg(w, http.StatusForbidden, "商品が取引中ではありません")
+		return
+	}
+	defer UnlockItem(itemID)
+
 	seller, errCode, errMsg := getUser(r)
 	if errMsg != "" {
 		outputErrorMsg(w, errCode, errMsg)
 		return
 	}
-
 	transactionEvidence := TransactionEvidence{}
 	err = dbx.Get(&transactionEvidence, "SELECT * FROM `transaction_evidences` WHERE `item_id` = ?", itemID)
 	if err == sql.ErrNoRows {
@@ -176,13 +182,6 @@ func postShip(w http.ResponseWriter, r *http.Request) {
 		outputErrorMsg(w, http.StatusForbidden, "権限がありません")
 		return
 	}
-
-	ok := LockItem(itemID)
-	if !ok {
-		outputErrorMsg(w, http.StatusForbidden, "商品が取引中ではありません")
-		return
-	}
-	defer UnlockItem(itemID)
 
 	item := Item{}
 	err = dbx.Get(&item, "SELECT * FROM `items` WHERE `id` = ? FOR UPDATE", itemID)
