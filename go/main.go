@@ -1245,23 +1245,8 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx := dbx.MustBegin()
-
-	seller := User{}
-	err = tx.Get(&seller, "SELECT * FROM `users` WHERE `id` = ? FOR UPDATE", user.ID)
-	if err == sql.ErrNoRows {
-		outputErrorMsg(w, http.StatusNotFound, "user not found")
-		tx.Rollback()
-		return
-	}
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
-
 	result, err := tx.Exec("INSERT INTO `items` (`seller_id`, `status`, `name`, `price`, `description`,`image_name`,`category_id`) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		seller.ID,
+		user.ID,
 		ItemStatusOnSale,
 		name,
 		price,
@@ -1285,10 +1270,9 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	_, err = tx.Exec("UPDATE `users` SET `num_sell_items`=?, `last_bump`=? WHERE `id`=?",
-		seller.NumSellItems+1,
+	_, err = tx.Exec("UPDATE `users` SET `num_sell_items`=`num_sell_items`+1, `last_bump`=? WHERE `id`=?",
 		now,
-		seller.ID,
+		user.ID,
 	)
 	if err != nil {
 		log.Print(err)
