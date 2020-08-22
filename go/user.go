@@ -26,6 +26,9 @@ func FetchUserDictByItems(items []Item) (map[int64]User, error) {
 	}
 	dict := map[int64]User{}
 	for i, _ := range b {
+		if b[i] == nil {
+			continue
+		}
 		var u CacheUser
 		err = json.Unmarshal(b[i], &u)
 		if err != nil {
@@ -61,6 +64,9 @@ func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
 
 	dict := map[int64]UserSimple{}
 	for i, _ := range b {
+		if b[i] == nil {
+			continue
+		}
 		var u CacheUser
 		err = json.Unmarshal(b[i], &u)
 		if err != nil {
