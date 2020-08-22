@@ -65,7 +65,7 @@ var (
 	store     sessions.Store
 
 	defaultLastBump, _ = time.Parse("2000-01-01 00:00:00", "2000-01-01 00:00:00")
-	cacheClient        *redisClient
+	cacheClient        *memcacheClient
 )
 
 func init() {
@@ -120,9 +120,12 @@ func main() {
 	dbx.DB.SetMaxIdleConns(30)
 	defer dbx.Close()
 
-	redisHost := os.Getenv("REDIS_HOST")
-	redisPort := os.Getenv("REDIS_PORT")
-	cacheClient = NewRedis("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
+	// redisHost := os.Getenv("REDIS_HOST")
+	// redisPort := os.Getenv("REDIS_PORT")
+	// cacheClient = NewRedis("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
+	memcachedHost := os.Getenv("MEMCACHED_HOST")
+	memcachedPort := os.Getenv("MEMCACHED_PORT")
+	cacheClient = NewMemcache("tcp", fmt.Sprintf("%s:%s", memcachedHost, memcachedPort))
 
 	mux := goji.NewMux()
 
