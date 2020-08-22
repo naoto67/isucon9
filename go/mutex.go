@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	itemMutex        = map[int64]*sync.Mutex{}
+	itemMap          = sync.Map{}
 	lockWaitDuration = 20 * time.Millisecond
 )
 
@@ -16,7 +16,12 @@ func LockItem(itemID int64) bool {
 	defer cancel()
 	ch := make(chan bool)
 	go func() {
-		itemMutex[itemID].Lock()
+		for {
+			_, loaded := itemMap.LoadOrStore(itemID, true)
+			if !loaded {
+				break
+			}
+		}
 		ch <- true
 	}()
 	select {
@@ -29,5 +34,5 @@ func LockItem(itemID int64) bool {
 }
 
 func UnlockItem(itemID int64) {
-	itemMutex[itemID].Unlock()
+	itemMap.Delete(itemID)
 }
