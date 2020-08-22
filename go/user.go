@@ -13,14 +13,14 @@ const (
 )
 
 func FetchUserDictByItems(items []Item) (map[int64]User, error) {
-	var userIDs []interface{}
+	var userIDs []string
 	for _, v := range items {
 		if v.BuyerID != 0 {
 			userIDs = append(userIDs, fmt.Sprintf("%s%d", USER_KEY_PREFIX, v.BuyerID))
 		}
 		userIDs = append(userIDs, fmt.Sprintf("%s%d", USER_KEY_PREFIX, v.SellerID))
 	}
-	b, err := redisClient.MGET(userIDs)
+	b, err := cacheClient.MultiGet(userIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -47,14 +47,14 @@ func FetchUserDictByItems(items []Item) (map[int64]User, error) {
 }
 
 func FetchUserSimpleDictByItems(items []Item) (map[int64]UserSimple, error) {
-	var userIDs []interface{}
+	var userIDs []string
 	for _, v := range items {
 		if v.BuyerID != 0 {
 			userIDs = append(userIDs, fmt.Sprintf("%s%d", USER_KEY_PREFIX, v.BuyerID))
 		}
 		userIDs = append(userIDs, fmt.Sprintf("%s%d", USER_KEY_PREFIX, v.SellerID))
 	}
-	b, err := redisClient.MGET(userIDs)
+	b, err := cacheClient.MultiGet(userIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -101,20 +101,24 @@ func InitUsersCache() error {
 		ua[fmt.Sprintf("%s%s", USER_ACCOUNT_KEY_PREFIX, v.AccountName)] = b
 	}
 
-	err = redisClient.MSET(m)
+	err = cacheClient.MultiSet(m)
 	if err != nil {
 		return err
 	}
-	err = redisClient.MSET(ua)
+	err = cacheClient.MultiSet(ua)
 	if err != nil {
 		return err
 	}
-	err = redisClient.SET(USER_COUNT_KEY, len(users))
+	data, err := json.Marshal(len(users))
+	if err != nil {
+		return err
+	}
+	err = cacheClient.SingleSet(USER_COUNT_KEY, data)
 	return err
 }
 
 func GetUserCacheByID(id int64) (*User, error) {
-	b, err := redisClient.GET(fmt.Sprintf("%s%d", USER_KEY_PREFIX, id))
+	b, err := cacheClient.SingleGet(fmt.Sprintf("%s%d", USER_KEY_PREFIX, id))
 	if err != nil {
 		return nil, err
 	}
@@ -146,12 +150,12 @@ func UpdateUserCache(user User) error {
 	if err != nil {
 		return err
 	}
-	err = redisClient.SET(fmt.Sprintf("%s%d", USER_KEY_PREFIX, user.ID), b)
+	err = cacheClient.SingleSet(fmt.Sprintf("%s%d", USER_KEY_PREFIX, user.ID), b)
 	return err
 }
 
 func GetUserCacheByAccountName(accountName string) (*User, error) {
-	b, err := redisClient.GET(fmt.Sprintf("%s%s", USER_ACCOUNT_KEY_PREFIX, accountName))
+	b, err := cacheClient.SingleGet(fmt.Sprintf("%s%s", USER_ACCOUNT_KEY_PREFIX, accountName))
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +169,7 @@ func GetUserCacheByAccountName(accountName string) (*User, error) {
 }
 
 func GetUserCount() (int, error) {
-	b, err := redisClient.GET(USER_COUNT_KEY)
+	b, err := cacheClient.SingleGet(USER_COUNT_KEY)
 	if err != nil {
 		return 0, nil
 	}
@@ -175,5 +179,6 @@ func GetUserCount() (int, error) {
 }
 
 func IncrUserCount() error {
-	return redisClient.INCR(USER_COUNT_KEY)
+	_, err := cacheClient.Increment(USER_COUNT_KEY, 1)
+	return err
 }
