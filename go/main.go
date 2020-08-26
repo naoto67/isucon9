@@ -268,6 +268,7 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
+	cacheClient.Flush()
 	err = InitUserCache()
 	if err != nil {
 		log.Print(err)
