@@ -334,25 +334,29 @@ func main() {
 		p, wf := newrelic.WrapHandleFunc(app, path, f)
 		return pat.Get(p), wf
 	}
+	postNewRelicWrap := func(path string, f func(w http.ResponseWriter, r *http.Request)) (goji.Pattern, func(w http.ResponseWriter, r *http.Request)) {
+		p, wf := newrelic.WrapHandleFunc(app, path, f)
+		return pat.Post(p), wf
+	}
 
 	// API
-	mux.HandleFunc(pat.Post("/initialize"), postInitialize)
+	mux.HandleFunc(postNewRelicWrap("/initialize", postInitialize))
 	mux.HandleFunc(getNewRelicWrap("/new_items.json", getNewItems))
 	mux.HandleFunc(getNewRelicWrap("/new_items/:root_category_id.json", getNewCategoryItems))
 	mux.HandleFunc(getNewRelicWrap("/users/transactions.json", getTransactions))
 	mux.HandleFunc(getNewRelicWrap("/users/:user_id.json", getUserItems))
 	mux.HandleFunc(getNewRelicWrap("/items/:item_id.json", getItem))
-	mux.HandleFunc(pat.Post("/items/edit"), postItemEdit)
-	mux.HandleFunc(pat.Post("/buy"), postBuy)
-	mux.HandleFunc(pat.Post("/sell"), postSell)
-	mux.HandleFunc(pat.Post("/ship"), postShip)
-	mux.HandleFunc(pat.Post("/ship_done"), postShipDone)
-	mux.HandleFunc(pat.Post("/complete"), postComplete)
+	mux.HandleFunc(postNewRelicWrap("/items/edit", postItemEdit))
+	mux.HandleFunc(postNewRelicWrap("/buy", postBuy))
+	mux.HandleFunc(postNewRelicWrap("/sell", postSell))
+	mux.HandleFunc(postNewRelicWrap("/ship", postShip))
+	mux.HandleFunc(postNewRelicWrap("/ship_done", postShipDone))
+	mux.HandleFunc(postNewRelicWrap("/complete", postComplete))
 	mux.HandleFunc(getNewRelicWrap("/transactions/:transaction_evidence_id.png", getQRCode))
-	mux.HandleFunc(pat.Post("/bump"), postBump)
+	mux.HandleFunc(postNewRelicWrap("/bump", postBump))
 	mux.HandleFunc(getNewRelicWrap("/settings", getSettings))
-	mux.HandleFunc(pat.Post("/login"), postLogin)
-	mux.HandleFunc(pat.Post("/register"), postRegister)
+	mux.HandleFunc(postNewRelicWrap("/login", postLogin))
+	mux.HandleFunc(postNewRelicWrap("/register", postRegister))
 	mux.HandleFunc(getNewRelicWrap("/reports.json", getReports))
 	// Frontend
 	mux.HandleFunc(getNewRelicWrap("/", getIndex))
