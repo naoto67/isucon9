@@ -186,8 +186,8 @@ func getUser(r *http.Request) (user User, errCode int, errMsg string) {
 		return user, http.StatusNotFound, "no session"
 	}
 
-	err := dbx.Get(&user, "SELECT * FROM `users` WHERE `id` = ?", userID)
-	if err == sql.ErrNoRows {
+	u, err := FetchUserCache(userID.(int64))
+	if u == nil {
 		return user, http.StatusNotFound, "user not found"
 	}
 	if err != nil {
@@ -195,18 +195,20 @@ func getUser(r *http.Request) (user User, errCode int, errMsg string) {
 		return user, http.StatusInternalServerError, "db error"
 	}
 
-	return user, http.StatusOK, ""
+	return *u, http.StatusOK, ""
 }
 
 func getUserSimpleByID(q sqlx.Queryer, userID int64) (userSimple UserSimple, err error) {
-	user := User{}
-	err = sqlx.Get(q, &user, "SELECT * FROM `users` WHERE `id` = ?", userID)
+	u, err := FetchUserCache(userID)
+	if u == nil {
+		return userSimple, sql.ErrNoRows
+	}
 	if err != nil {
 		return userSimple, err
 	}
-	userSimple.ID = user.ID
-	userSimple.AccountName = user.AccountName
-	userSimple.NumSellItems = user.NumSellItems
+	userSimple.ID = u.ID
+	userSimple.AccountName = u.AccountName
+	userSimple.NumSellItems = u.NumSellItems
 	return userSimple, err
 }
 
