@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	USER_CACHE_PREFIX = "uid:"
+	USER_CACHE_PREFIX         = "uid:"
+	USER_ACCOUNT_CACHE_PREFIX = "ua:"
 )
 
 var (
@@ -54,6 +55,11 @@ func StoreUserCache(user User) error {
 		return err
 	}
 	key := fmt.Sprintf("%s%d", USER_CACHE_PREFIX, user.ID)
+	err = cacheClient.SingleSet(key, data)
+	if err != nil {
+		return err
+	}
+	key = fmt.Sprintf("%s%s", USER_ACCOUNT_CACHE_PREFIX, user.AccountName)
 	return cacheClient.SingleSet(key, data)
 }
 
@@ -64,6 +70,7 @@ func InitUserCache() error {
 		return err
 	}
 	userMap := map[string][]byte{}
+	userAccountMap := map[string][]byte{}
 	for _, user := range users {
 		data, err := json.Marshal(user)
 		if err != nil {
@@ -71,12 +78,30 @@ func InitUserCache() error {
 		}
 		key := fmt.Sprintf("%s%d", USER_CACHE_PREFIX, user.ID)
 		userMap[key] = data
+		key = fmt.Sprintf("%s%s", USER_ACCOUNT_CACHE_PREFIX, user.AccountName)
+		userAccountMap[key] = data
 	}
-	return cacheClient.MultiSet(userMap)
+	err = cacheClient.MultiSet(userMap)
+	if err != nil {
+		return err
+	}
+	return cacheClient.MultiSet(userAccountMap)
 }
 
 func FetchUserCache(userID int64) (*User, error) {
 	key := fmt.Sprintf("%s%d", USER_CACHE_PREFIX, userID)
+	data, err := cacheClient.SingleGet(key)
+	if err != nil {
+		return nil, err
+	}
+	var user UserCache
+	err = json.Unmarshal(data, &user)
+	res := user.toUser()
+	return &res, err
+}
+
+func FetchUserCacheByAccountName(accountName string) (*User, error) {
+	key := fmt.Sprintf("%s%s", USER_ACCOUNT_CACHE_PREFIX, accountName)
 	data, err := cacheClient.SingleGet(key)
 	if err != nil {
 		return nil, err
