@@ -78,6 +78,7 @@ func init() {
 }
 
 func main() {
+	mysqlUnixSocket := os.Getenv("MYSQL_UNIX_SOCKET")
 	host := os.Getenv("MYSQL_HOST")
 	if host == "" {
 		host = "127.0.0.1"
@@ -103,14 +104,25 @@ func main() {
 		password = "isucari"
 	}
 
-	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
-		user,
-		password,
-		host,
-		port,
-		dbname,
-	)
+	var dsn string
+	if mysqlUnixSocket == "" {
+		dsn = fmt.Sprintf(
+			"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
+			user,
+			password,
+			host,
+			port,
+			dbname,
+		)
+	} else {
+		dsn = fmt.Sprintf(
+			"%s:%s@unix(%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
+			mysqlUnixSocket,
+			host,
+			port,
+			dbname,
+		)
+	}
 
 	dbx, err = sqlx.Open("mysql", dsn)
 	if err != nil {
