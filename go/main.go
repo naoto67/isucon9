@@ -117,9 +117,9 @@ func main() {
 	} else {
 		dsn = fmt.Sprintf(
 			"%s:%s@unix(%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
+			user,
+			password,
 			mysqlUnixSocket,
-			host,
-			port,
 			dbname,
 		)
 	}
