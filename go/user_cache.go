@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -110,4 +111,38 @@ func FetchUserCacheByAccountName(accountName string) (*User, error) {
 	err = json.Unmarshal(data, &user)
 	res := user.toUser()
 	return &res, err
+}
+
+func FetchUserSimpleDictFromCache(items []Item) (map[int64]UserSimple, error) {
+	var userIDs []string
+	for _, v := range items {
+		if v.BuyerID != 0 {
+			userIDs = append(userIDs, fmt.Sprintf("%s%d", USER_CACHE_PREFIX, v.BuyerID))
+		}
+		userIDs = append(userIDs, fmt.Sprintf("%s%d", USER_CACHE_PREFIX, v.SellerID))
+	}
+	data, err := cacheClient.MultiGet(userIDs)
+	if err != nil {
+		return nil, err
+	}
+	dict := map[int64]UserSimple{}
+	for i := range data {
+		if data[i] == nil {
+			log.Println("user not found")
+			continue
+		}
+		var user User
+		err = json.Unmarshal(data[i], &user)
+		if err != nil {
+			return nil, err
+		}
+		userSimple := UserSimple{
+			ID:           user.ID,
+			AccountName:  user.AccountName,
+			NumSellItems: user.NumSellItems,
+		}
+		dict[user.ID] = userSimple
+	}
+
+	return dict, nil
 }

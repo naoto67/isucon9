@@ -343,7 +343,7 @@ func getNewItems(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	userDict, err := FetchUserSimpleDictByItems(items)
+	userDict, err := FetchUserSimpleDictFromCache(items)
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
@@ -477,7 +477,7 @@ func getNewCategoryItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userDict, err := FetchUserSimpleDictByItems(items)
+	userDict, err := FetchUserSimpleDictFromCache(items)
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
@@ -698,7 +698,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	userDict, err := FetchUserSimpleDictByItems(items)
+	userDict, err := FetchUserSimpleDictFromCache(items)
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
@@ -1399,14 +1399,6 @@ func postBump(w http.ResponseWriter, r *http.Request) {
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
-	user.LastBump = now
-	err = StoreUserCache(user)
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
-	}
 
 	err = tx.Get(&targetItem, "SELECT * FROM `items` WHERE `id` = ?", itemID)
 	if err != nil {
@@ -1463,8 +1455,9 @@ func postLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := FetchUserCacheByAccountName(accountName)
-	if u == nil {
+	u := User{}
+	err = dbx.Get(&u, "SELECT * FROM `users` WHERE `account_name` = ?", accountName)
+	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusUnauthorized, "アカウント名かパスワードが間違えています")
 		return
 	}
