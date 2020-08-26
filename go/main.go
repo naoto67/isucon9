@@ -132,9 +132,14 @@ func main() {
 	defer dbx.Close()
 
 	mux := goji.NewMux()
-	redisHost := os.Getenv("REDIS_HOST")
-	redisPort := os.Getenv("REDIS_PORT")
-	cacheClient = NewRedis("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
+	redisUnixSocket := os.Getenv("REDIS_UNIX_SOCKET")
+	if redisUnixSocket == "" {
+		redisHost := os.Getenv("REDIS_HOST")
+		redisPort := os.Getenv("REDIS_PORT")
+		cacheClient = NewRedis("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
+	} else {
+		cacheClient = NewRedis("unix", redisUnixSocket)
+	}
 
 	// API
 	mux.HandleFunc(pat.Post("/initialize"), postInitialize)
