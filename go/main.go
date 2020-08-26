@@ -63,6 +63,8 @@ var (
 	templates *template.Template
 	dbx       *sqlx.DB
 	store     sessions.Store
+
+	cacheClient *redisClient
 )
 
 func init() {
@@ -118,6 +120,9 @@ func main() {
 	defer dbx.Close()
 
 	mux := goji.NewMux()
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
+	cacheClient = NewRedis("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
 
 	// API
 	mux.HandleFunc(pat.Post("/initialize"), postInitialize)
@@ -258,6 +263,12 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 		"shipment_service_url",
 		ri.ShipmentServiceURL,
 	)
+	if err != nil {
+		log.Print(err)
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	err = InitUserCache()
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
@@ -1270,9 +1281,20 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	_, err = tx.Exec("UPDATE `users` SET `num_sell_items`=`num_sell_items`+1, `last_bump`=? WHERE `id`=?",
-		now,
-		user.ID,
+	u, err := FetchUserCache(user.ID)
+	if err != nil {
+		log.Print(err)
+		tx.Rollback()
+
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	u.NumSellItems += 1
+	u.LastBump = now
+	_, err = tx.Exec("UPDATE `users` SET `num_sell_items`=?, `last_bump`=? WHERE `id`=?",
+		u.NumSellItems,
+		u.LastBump,
+		u.ID,
 	)
 	if err != nil {
 		log.Print(err)
@@ -1280,8 +1302,15 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
-	tx.Commit()
+	err = StoreUserCache(*u)
+	if err != nil {
+		log.Print(err)
+		tx.Rollback()
 
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	tx.Commit()
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resSell{ID: itemID})
 }
@@ -1502,10 +1531,12 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := dbx.Exec("INSERT INTO `users` (`account_name`, `hashed_password`, `address`) VALUES (?, ?, ?)",
+	now := time.Now()
+	result, err := dbx.Exec("INSERT INTO `users` (`account_name`, `hashed_password`, `address`, `created_at`) VALUES (?, ?, ?, ?)",
 		accountName,
 		hashedPassword,
 		address,
+		now,
 	)
 	if err != nil {
 		log.Print(err)
@@ -1516,6 +1547,23 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := result.LastInsertId()
 
+	if err != nil {
+		log.Print(err)
+
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
+
+	v := User{
+		ID:             userID,
+		AccountName:    accountName,
+		HashedPassword: hashedPassword,
+		Address:        address,
+		NumSellItems:   0,
+		LastBump:       DefaultLastBump,
+		CreatedAt:      now,
+	}
+	err = StoreUserCache(v)
 	if err != nil {
 		log.Print(err)
 
