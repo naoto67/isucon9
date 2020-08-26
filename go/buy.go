@@ -59,8 +59,8 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	seller := User{}
-	err = dbx.Get(&seller, "SELECT * FROM `users` WHERE `id` = ?", targetItem.SellerID)
-	if err == sql.ErrNoRows {
+	u, err := FetchUserCache(targetItem.SellerID)
+	if u == nil {
 		outputErrorMsg(w, http.StatusNotFound, "seller not found")
 		return
 	}
@@ -70,6 +70,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
+	seller = *u
 
 	category, err := getCategoryByID(nil, targetItem.CategoryID)
 	if err != nil {
