@@ -18,6 +18,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	goji "goji.io"
 	"goji.io/pat"
 	"golang.org/x/crypto/bcrypt"
@@ -319,11 +320,23 @@ func main() {
 	}
 	defer dbx.Close()
 
+	app, err := newrelic.NewApplication(
+		newrelic.ConfigAppName("isucon9"),
+		newrelic.ConfigLicense("3568f3b7e3e084a28f96841b73be882c7f14NRAL"),
+		newrelic.ConfigDistributedTracerEnabled(true),
+	)
+	if err != nil {
+		log.Fatalf("failed new relic app: %s", err.Error())
+	}
+
 	mux := goji.NewMux()
+	getWrap := func(path string, f func(w http.ResponseWriter, r *http.Request)) (goji.Pattern, func(w http.ResponseWriter, r *http.Request)) {
+		return pat.Get(path), f
+	}
 
 	// API
 	mux.HandleFunc(pat.Post("/initialize"), postInitialize)
-	mux.HandleFunc(pat.Get("/new_items.json"), getNewItems)
+	mux.HandleFunc(getWrap(newrelic.WrapHandleFunc(app, "/new_items.json", getNewItems)))
 	mux.HandleFunc(pat.Get("/new_items/:root_category_id.json"), getNewCategoryItems)
 	mux.HandleFunc(pat.Get("/users/transactions.json"), getTransactions)
 	mux.HandleFunc(pat.Get("/users/:user_id.json"), getUserItems)
