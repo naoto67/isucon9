@@ -363,10 +363,18 @@ func getNewItems(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	userIDs := FetchUserIDsFromItems(items)
+	userDict, err := FetchUserSimplesDictFromIDs(userIDs)
+	if err != nil {
+		logger.Info(err)
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
 	itemSimples := []ItemSimple{}
 	for _, item := range items {
-		seller, err := getUserSimpleByID(dbx, item.SellerID)
-		if err != nil {
+		seller, ok := userDict[item.SellerID]
+		if !ok {
+			logger.Info("seller not found")
 			outputErrorMsg(w, http.StatusNotFound, "seller not found")
 			return
 		}
@@ -418,10 +426,9 @@ func getNewCategoryItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var categoryIDs []int
-	err = dbx.Select(&categoryIDs, "SELECT id FROM `categories` WHERE parent_id=?", rootCategory.ID)
-	if err != nil {
-		log.Print(err)
+	categoryIDs, ok := CategoriesInParent[rootCategoryID]
+	if !ok {
+		logger.Info(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
@@ -491,10 +498,18 @@ func getNewCategoryItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userIDs := FetchUserIDsFromItems(items)
+	userDict, err := FetchUserSimplesDictFromIDs(userIDs)
+	if err != nil {
+		logger.Info(err)
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
 	itemSimples := []ItemSimple{}
 	for _, item := range items {
-		seller, err := getUserSimpleByID(dbx, item.SellerID)
-		if err != nil {
+		seller, ok := userDict[item.SellerID]
+		if !ok {
+			logger.Info("seller not found")
 			outputErrorMsg(w, http.StatusNotFound, "seller not found")
 			return
 		}
