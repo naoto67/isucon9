@@ -79,11 +79,12 @@ func init() {
 }
 
 func main() {
-	logger, err := zap.NewDevelopment()
+	l, err := zap.NewDevelopment()
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync()
+	logger = l.Sugar()
+	defer l.Sync()
 
 	host := os.Getenv("MYSQL_HOST")
 	if host == "" {
