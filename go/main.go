@@ -1148,18 +1148,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		tx.Rollback()
 		return
 	}
-	chScr := make(chan *APIShipmentCreateRes)
-	chErr := make(chan error)
-	go func() {
-		scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
-			ToAddress:   buyer.Address,
-			ToName:      buyer.AccountName,
-			FromAddress: seller.Address,
-			FromName:    seller.AccountName,
-		})
-		chScr <- scr
-		chErr <- err
-	}()
 
 	category, err := getCategoryByID(tx, targetItem.CategoryID)
 	if err != nil {
@@ -1212,6 +1200,21 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
+		ToAddress:   buyer.Address,
+		ToName:      buyer.AccountName,
+		FromAddress: seller.Address,
+		FromName:    seller.AccountName,
+	})
+
+	if err != nil {
+		logger.Info(err)
+		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
+		tx.Rollback()
+
+		return
+	}
+
 	pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
 		ShopID: PaymentServiceIsucariShopID,
 		Token:  rb.Token,
@@ -1244,15 +1247,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = <-chErr
-	if err != nil {
-		logger.Info(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
-		tx.Rollback()
-
-		return
-	}
-	scr := <-chScr
 	_, err = tx.Exec("INSERT INTO `shippings` (`transaction_evidence_id`, `status`, `item_name`, `item_id`, `reserve_id`, `reserve_time`, `to_address`, `to_name`, `from_address`, `from_name`, `img_binary`) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
 		transactionEvidenceID,
 		ShippingsStatusInitial,
