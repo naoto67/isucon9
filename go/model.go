@@ -210,3 +210,13 @@ type TS struct {
 	T TransactionEvidence
 	S Shipping
 }
+
+type UserCache struct {
+	ID             int64     `json:"id" db:"id"`
+	AccountName    string    `json:"account_name" db:"account_name"`
+	HashedPassword []byte    `json:"hashed_password" db:"hashed_password"`
+	Address        string    `json:"address,omitempty" db:"address"`
+	NumSellItems   int       `json:"num_sell_items" db:"num_sell_items"`
+	LastBump       time.Time `json:"last_bump" db:"last_bump"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+}

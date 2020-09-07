@@ -65,7 +65,8 @@ var (
 	dbx       *sqlx.DB
 	store     sessions.Store
 
-	logger *zap.SugaredLogger
+	logger      *zap.SugaredLogger
+	cacheClient *redisClient
 )
 
 func init() {
@@ -126,6 +127,9 @@ func main() {
 	}
 	defer dbx.Close()
 	dbx.DB.SetMaxIdleConns(30)
+
+	redisHost := os.Getenv("REDIS_HOST")
+	cacheClient = NewRedis("tcp", redisHost)
 
 	InitCategory()
 
@@ -193,28 +197,21 @@ func getUser(r *http.Request) (user User, errCode int, errMsg string) {
 		return user, http.StatusNotFound, "no session"
 	}
 
-	err := dbx.Get(&user, "SELECT * FROM `users` WHERE `id` = ?", userID)
-	if err == sql.ErrNoRows {
+	uc, _ := FetchUserCache(userID.(int64))
+	if uc == nil {
 		return user, http.StatusNotFound, "user not found"
 	}
-	if err != nil {
-		log.Print(err)
-		return user, http.StatusInternalServerError, "db error"
-	}
+	user = uc.BuildUser()
 
 	return user, http.StatusOK, ""
 }
 
 func getUserSimpleByID(q sqlx.Queryer, userID int64) (userSimple UserSimple, err error) {
-	user := User{}
-	err = sqlx.Get(q, &user, "SELECT * FROM `users` WHERE `id` = ?", userID)
-	if err != nil {
-		return userSimple, err
+	uc, _ := FetchUserCache(userID)
+	if uc == nil {
+		return userSimple, sql.ErrNoRows
 	}
-	userSimple.ID = user.ID
-	userSimple.AccountName = user.AccountName
-	userSimple.NumSellItems = user.NumSellItems
-	return userSimple, err
+	return uc.BuildUserSimple(), nil
 }
 
 func getCategoryByID(q sqlx.Queryer, categoryID int) (category Category, err error) {
@@ -294,6 +291,13 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+	}
+
+	cacheClient.Flush()
+	err = InitUserCache()
+	if err != nil {
+		logger.Errorw("InitUserCache", "err", err)
 		return
 	}
 
@@ -1651,6 +1655,17 @@ func postSell(w http.ResponseWriter, r *http.Request) {
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
 	}
+	seller.NumSellItems = seller.NumSellItems + 1
+	seller.LastBump = now
+	err = InsertUserCache(seller)
+	if err != nil {
+		logger.Errorw("InsertUserCache", "err", err)
+		tx.Rollback()
+
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+
+	}
 	tx.Commit()
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
@@ -1750,6 +1765,16 @@ func postBump(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 		outputErrorMsg(w, http.StatusInternalServerError, "db error")
 		return
+	}
+	seller.LastBump = now
+	err = InsertUserCache(seller)
+	if err != nil {
+		logger.Errorw("InsertUserCache", "err", err)
+		tx.Rollback()
+
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
+
 	}
 
 	err = tx.Get(&targetItem, "SELECT * FROM `items` WHERE `id` = ?", itemID)
@@ -1875,10 +1900,12 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := dbx.Exec("INSERT INTO `users` (`account_name`, `hashed_password`, `address`) VALUES (?, ?, ?)",
+	now := time.Now()
+	result, err := dbx.Exec("INSERT INTO `users` (`account_name`, `hashed_password`, `address`, `created_at`) VALUES (?, ?, ?, ?)",
 		accountName,
 		hashedPassword,
 		address,
+		now,
 	)
 	if err != nil {
 		log.Print(err)
@@ -1900,6 +1927,22 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		ID:          userID,
 		AccountName: accountName,
 		Address:     address,
+	}
+	uc := UserCache{
+		ID:             userID,
+		AccountName:    accountName,
+		Address:        address,
+		HashedPassword: hashedPassword,
+		NumSellItems:   0,
+		LastBump:       DefaultLastBump,
+		CreatedAt:      now,
+	}
+
+	err = InsertUserCache(uc)
+	if err != nil {
+		logger.Error("InsertUserCache", "err", err)
+		outputErrorMsg(w, http.StatusInternalServerError, "db error")
+		return
 	}
 
 	session := getSession(r)
