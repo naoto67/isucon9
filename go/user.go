@@ -55,8 +55,17 @@ func InitUserCache() error {
 	return cacheClient.MultiSet(data)
 }
 
-func InsertUserCache(user interface{}) error {
-	uc := user.(UserCache)
+func InsertUserCache(user User) error {
+	uc := UserCache{
+		ID:             user.ID,
+		AccountName:    user.AccountName,
+		Address:        user.Address,
+		HashedPassword: user.HashedPassword,
+		NumSellItems:   user.NumSellItems,
+		LastBump:       user.LastBump,
+		CreatedAt:      user.CreatedAt,
+	}
+
 	d, err := json.Marshal(uc)
 	if err != nil {
 		return err

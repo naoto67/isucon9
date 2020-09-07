@@ -1928,7 +1928,7 @@ func postRegister(w http.ResponseWriter, r *http.Request) {
 		AccountName: accountName,
 		Address:     address,
 	}
-	uc := UserCache{
+	uc := User{
 		ID:             userID,
 		AccountName:    accountName,
 		Address:        address,
