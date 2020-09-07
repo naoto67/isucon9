@@ -4,6 +4,9 @@ import "github.com/jmoiron/sqlx"
 
 // res key itemID
 func FetchTransactionDictFromItemIDs(itemIDs []int64) (map[int64]TS, error) {
+	if len(itemIDs) == 0 {
+		return nil, nil
+	}
 	query := "SELECT * FROM `transaction_evidences` t INNER JOIN shippings s ON s.transaction_evidence_id = t.id WHERE t.`item_id` IN (?)"
 	inQuery, inArgs, err := sqlx.In(query, itemIDs)
 	if err != nil {
