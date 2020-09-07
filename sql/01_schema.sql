@@ -31,7 +31,7 @@ CREATE TABLE `items` (
   `parent_category_id` int unsigned NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_category_id (`category_id`, `created_at`),
+  INDEX idx_parent_category_id (`parent_category_id`, `created_at`),
   INDEX idx_seller_id (`seller_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4;
 
