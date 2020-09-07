@@ -24,17 +24,18 @@ type UserSimple struct {
 }
 
 type Item struct {
-	ID          int64     `json:"id" db:"id"`
-	SellerID    int64     `json:"seller_id" db:"seller_id"`
-	BuyerID     int64     `json:"buyer_id" db:"buyer_id"`
-	Status      string    `json:"status" db:"status"`
-	Name        string    `json:"name" db:"name"`
-	Price       int       `json:"price" db:"price"`
-	Description string    `json:"description" db:"description"`
-	ImageName   string    `json:"image_name" db:"image_name"`
-	CategoryID  int       `json:"category_id" db:"category_id"`
-	CreatedAt   time.Time `json:"-" db:"created_at"`
-	UpdatedAt   time.Time `json:"-" db:"updated_at"`
+	ID               int64     `json:"id" db:"id"`
+	SellerID         int64     `json:"seller_id" db:"seller_id"`
+	BuyerID          int64     `json:"buyer_id" db:"buyer_id"`
+	Status           string    `json:"status" db:"status"`
+	Name             string    `json:"name" db:"name"`
+	Price            int       `json:"price" db:"price"`
+	Description      string    `json:"description" db:"description"`
+	ImageName        string    `json:"image_name" db:"image_name"`
+	CategoryID       int       `json:"category_id" db:"category_id"`
+	ParentCategoryID int       `json:"-" db:"parent_category_id"`
+	CreatedAt        time.Time `json:"-" db:"created_at"`
+	UpdatedAt        time.Time `json:"-" db:"updated_at"`
 }
 
 type ItemSimple struct {
