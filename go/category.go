@@ -11,7 +11,7 @@ func InitCategory() {
 	Categories = []Category{}
 	CategoriesInParent = map[int][]int{}
 	var categories []Category
-	err := dbx.Select(&categories, "SELECT c1.*, c2.category_name as parent_name FROM categories c1 LEFT JOIN categories c2 ON c1.parent_id = c2.id")
+	err := dbx.Select(&categories, "SELECT c1.*, IFNULL(c2.category_name, '') as parent_name FROM categories c1 LEFT JOIN categories c2 ON c1.parent_id = c2.id")
 	if err != nil {
 		logger.Error(err)
 		return
