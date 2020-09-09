@@ -142,7 +142,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	//}()
 	//pstr, err := <-chPstr, <-chPstrErr
 	if err != nil {
-		log.Print(err)
+		logger.Infow("payment service is failed", "err", err)
 
 		outputErrorMsg(w, http.StatusInternalServerError, "payment service is failed")
 		tx.Rollback()

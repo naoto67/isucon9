@@ -15,7 +15,7 @@ type MaxConnection struct {
 }
 
 const (
-	MAX_CONNECTION int = 500
+	MAX_CONNECTION int = 350
 )
 
 func LockItem(itemID int64) bool {

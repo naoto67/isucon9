@@ -1193,7 +1193,6 @@ func postShip(w http.ResponseWriter, r *http.Request) {
 			ReserveID: shipping.ReserveID,
 		})
 		if err != nil {
-			log.Print(err)
 			outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
 			tx.Rollback()
 
