@@ -41,6 +41,7 @@ func WaitConnection() bool {
 		maxConn.Mux.Lock()
 		if maxConn.CurrentConnCount < MAX_CONNECTION {
 			maxConn.CurrentConnCount += 1
+			maxConn.Mux.Unlock()
 			return true
 		}
 		maxConn.Mux.Unlock()

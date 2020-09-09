@@ -1216,7 +1216,7 @@ func postShip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx.Commit()
-	time.Sleep(100 * time.Millisecond)
+	// time.Sleep(100 * time.Millisecond)
 
 	rps := resPostShip{
 		Path:      fmt.Sprintf("/transactions/%d.png", transactionEvidence.ID),
@@ -1890,7 +1890,7 @@ func postLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	// time.Sleep(100 * time.Millisecond)
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(u)
