@@ -1327,6 +1327,8 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 	ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
 		ReserveID: shipping.ReserveID,
 	})
+
+	logger.Infow("postShipDone", "shipingStatus", ssr.Status)
 	if err != nil {
 		logger.Info("failed to request to shipment service", "reserve_id", shipping.ReserveID, "err", err)
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
