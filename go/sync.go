@@ -37,13 +37,11 @@ func UnlockItemForBuy(itemID int64) {
 }
 
 func WaitConnection() bool {
-	for {
-		maxConn.Mux.Lock()
-		if maxConn.CurrentConnCount < MAX_CONNECTION {
-			maxConn.CurrentConnCount += 1
-			maxConn.Mux.Unlock()
-			return true
-		}
+	maxConn.Mux.Lock()
+	if maxConn.CurrentConnCount < MAX_CONNECTION {
+		maxConn.CurrentConnCount += 1
 		maxConn.Mux.Unlock()
+		return true
 	}
+	return false
 }
