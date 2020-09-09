@@ -93,18 +93,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		chScr <- scr
 		chErr <- err
 	}()
-	chPstr := make(chan *APIPaymentServiceTokenRes)
-	chPstrErr := make(chan error)
-	go func() {
-		pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
-			ShopID: PaymentServiceIsucariShopID,
-			Token:  rb.Token,
-			APIKey: PaymentServiceIsucariAPIKey,
-			Price:  targetItem.Price,
-		})
-		chPstr <- pstr
-		chPstrErr <- err
-	}()
 
 	tx := dbx.MustBegin()
 
@@ -150,6 +138,18 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	chPstr := make(chan *APIPaymentServiceTokenRes)
+	chPstrErr := make(chan error)
+	go func() {
+		pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
+			ShopID: PaymentServiceIsucariShopID,
+			Token:  rb.Token,
+			APIKey: PaymentServiceIsucariAPIKey,
+			Price:  targetItem.Price,
+		})
+		chPstr <- pstr
+		chPstrErr <- err
+	}()
 	pstr, err := <-chPstr, <-chPstrErr
 	if err != nil {
 		log.Print(err)
