@@ -82,6 +82,8 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	time.Sleep(100 * time.Millisecond)
+
 	tx := dbx.MustBegin()
 
 	result, err := tx.Exec("INSERT INTO `transaction_evidences` (`seller_id`, `buyer_id`, `status`, `item_id`, `item_name`, `item_price`, `item_description`,`item_category_id`,`item_root_category_id`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
