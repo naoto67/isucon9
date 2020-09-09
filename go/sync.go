@@ -17,10 +17,10 @@ func UnlockItem(itemID int64) {
 }
 
 func LockItemForBuy(itemID int64) bool {
-	_, loaded := ItemSyncMap.LoadOrStore(itemID, 1)
+	_, loaded := ItemSyncMapForBuy.LoadOrStore(itemID, 1)
 	return !loaded
 }
 
 func UnlockItemForBuy(itemID int64) {
-	ItemSyncMap.Delete(itemID)
+	ItemSyncMapForBuy.Delete(itemID)
 }
