@@ -133,6 +133,11 @@ func main() {
 	redisHost := os.Getenv("REDIS_HOST")
 	cacheClient = NewRedis("tcp", redisHost)
 
+	host1 := os.Getenv("APP1_HOST")
+	host2 := os.Getenv("APP2_HOST")
+	host3 := os.Getenv("APP3_HOST")
+	appHosts = []string{host1, host2, host3}
+
 	InitCategory()
 
 	mux := goji.NewMux()
