@@ -90,6 +90,8 @@ func APIPaymentToken(paymentURL string, param *APIPaymentServiceTokenReq) (*APIP
 }
 
 func APIShipmentCreate(shipmentURL string, param *APIShipmentCreateReq) (*APIShipmentCreateRes, error) {
+	WaitConnection()
+	defer DoneConnection()
 	b, _ := json.Marshal(param)
 
 	req, err := http.NewRequest(http.MethodPost, shipmentURL+"/create", bytes.NewBuffer(b))
@@ -125,6 +127,8 @@ func APIShipmentCreate(shipmentURL string, param *APIShipmentCreateReq) (*APIShi
 }
 
 func APIShipmentRequest(shipmentURL string, param *APIShipmentRequestReq) ([]byte, error) {
+	WaitConnection()
+	defer DoneConnection()
 	b, _ := json.Marshal(param)
 
 	req, err := http.NewRequest(http.MethodPost, shipmentURL+"/request", bytes.NewBuffer(b))
@@ -154,6 +158,8 @@ func APIShipmentRequest(shipmentURL string, param *APIShipmentRequestReq) ([]byt
 }
 
 func APIShipmentStatus(shipmentURL string, param *APIShipmentStatusReq) (*APIShipmentStatusRes, error) {
+	WaitConnection()
+	defer DoneConnection()
 	b, _ := json.Marshal(param)
 
 	req, err := http.NewRequest(http.MethodGet, shipmentURL+"/status", bytes.NewBuffer(b))
