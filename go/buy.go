@@ -80,19 +80,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chPstr := make(chan *APIPaymentServiceTokenRes)
-	chPstrErr := make(chan error)
-	go func() {
-		pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
-			ShopID: PaymentServiceIsucariShopID,
-			Token:  rb.Token,
-			APIKey: PaymentServiceIsucariAPIKey,
-			Price:  targetItem.Price,
-		})
-		chPstr <- pstr
-		chPstrErr <- err
-	}()
-
 	tx := dbx.MustBegin()
 
 	result, err := tx.Exec("INSERT INTO `transaction_evidences` (`seller_id`, `buyer_id`, `status`, `item_id`, `item_name`, `item_price`, `item_description`,`item_category_id`,`item_root_category_id`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -137,6 +124,18 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	chPstr := make(chan *APIPaymentServiceTokenRes)
+	chPstrErr := make(chan error)
+	go func() {
+		pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
+			ShopID: PaymentServiceIsucariShopID,
+			Token:  rb.Token,
+			APIKey: PaymentServiceIsucariAPIKey,
+			Price:  targetItem.Price,
+		})
+		chPstr <- pstr
+		chPstrErr <- err
+	}()
 	pstr, err := <-chPstr, <-chPstrErr
 	if err != nil {
 		log.Print(err)
