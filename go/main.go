@@ -128,7 +128,9 @@ func main() {
 		log.Fatalf("failed to connect to DB: %s.", err.Error())
 	}
 	defer dbx.Close()
-	dbx.DB.SetMaxIdleConns(30)
+	dbx.DB.SetConnMaxLifetime(10 * time.Second)
+	dbx.DB.SetMaxIdleConns(512)
+	dbx.DB.SetMaxOpenConns(512)
 
 	redisHost := os.Getenv("REDIS_HOST")
 	cacheClient = NewRedis("tcp", redisHost)
@@ -317,7 +319,7 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 
 	res := resInitialize{
 		// キャンペーン実施時には還元率の設定を返す。詳しくはマニュアルを参照のこと。
-		Campaign: 0,
+		Campaign: 1,
 		// 実装言語を返す
 		Language: "Go",
 	}
