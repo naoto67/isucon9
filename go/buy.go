@@ -93,6 +93,18 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		chScr <- scr
 		chErr <- err
 	}()
+	chPstr := make(chan *APIPaymentServiceTokenRes)
+	chPstrErr := make(chan error)
+	go func() {
+		pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
+			ShopID: PaymentServiceIsucariShopID,
+			Token:  rb.Token,
+			APIKey: PaymentServiceIsucariAPIKey,
+			Price:  targetItem.Price,
+		})
+		chPstr <- pstr
+		chPstrErr <- err
+	}()
 
 	tx := dbx.MustBegin()
 
@@ -138,21 +150,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scr, err := <-chScr, <-chErr
-	if err != nil {
-		logger.Infow("shipment error", "err", err)
-		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
-		tx.Rollback()
-
-		return
-	}
-
-	pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
-		ShopID: PaymentServiceIsucariShopID,
-		Token:  rb.Token,
-		APIKey: PaymentServiceIsucariAPIKey,
-		Price:  targetItem.Price,
-	})
+	pstr, err := <-chPstr, <-chPstrErr
 	if err != nil {
 		log.Print(err)
 
@@ -176,6 +174,15 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	if pstr.Status != "ok" {
 		outputErrorMsg(w, http.StatusBadRequest, "想定外のエラー")
 		tx.Rollback()
+		return
+	}
+
+	scr, err := <-chScr, <-chErr
+	if err != nil {
+		logger.Infow("shipment error", "err", err)
+		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
+		tx.Rollback()
+
 		return
 	}
 
