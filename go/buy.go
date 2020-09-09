@@ -23,8 +23,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	time.Sleep(100 * time.Millisecond)
-
 	buyer, errCode, errMsg := getUser(r)
 	if errMsg != "" {
 		outputErrorMsg(w, errCode, errMsg)
@@ -82,8 +80,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	time.Sleep(100 * time.Millisecond)
-
+	time.Sleep(250 * time.Millisecond)
 	tx := dbx.MustBegin()
 
 	result, err := tx.Exec("INSERT INTO `transaction_evidences` (`seller_id`, `buyer_id`, `status`, `item_id`, `item_name`, `item_price`, `item_description`,`item_category_id`,`item_root_category_id`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -211,8 +208,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx.Commit()
-
-	time.Sleep(45 * time.Millisecond)
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resBuy{TransactionEvidenceID: transactionEvidenceID})
