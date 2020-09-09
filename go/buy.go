@@ -23,7 +23,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// time.Sleep(45 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	buyer, errCode, errMsg := getUser(r)
 	if errMsg != "" {
