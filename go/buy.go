@@ -89,6 +89,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 			FromAddress: seller.Address,
 			FromName:    seller.AccountName,
 		})
+		logger.Info("go func shipment create", "scr", scr, "err", err)
 		chScr <- scr
 		chErr <- err
 	}()
