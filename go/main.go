@@ -144,15 +144,15 @@ func main() {
 
 	mux := goji.NewMux()
 
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		for {
-			select {
-			case <-ticker.C:
-				logger.Info("MaxConn", maxConn.CurrentConnCount)
-			}
-		}
-	}()
+	// go func() {
+	// 	ticker := time.NewTicker(1 * time.Second)
+	// 	for {
+	// 		select {
+	// 		case <-ticker.C:
+	// 			logger.Info("MaxConn", maxConn.CurrentConnCount)
+	// 		}
+	// 	}
+	// }()
 
 	// API
 	mux.HandleFunc(pat.Post("/initialize"), postInitialize)
