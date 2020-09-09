@@ -17,7 +17,7 @@ type MaxConnection struct {
 }
 
 const (
-	MAX_CONNECTION int = 250
+	MAX_CONNECTION int = 50
 )
 
 func LockItem(itemID int64) bool {
@@ -40,9 +40,9 @@ func UnlockItemForBuy(itemID int64) {
 
 func WaitConnection() bool {
 	maxConn.Mux.Lock()
+	defer maxConn.Mux.Unlock()
 	if maxConn.CurrentConnCount < MAX_CONNECTION {
 		maxConn.CurrentConnCount += 1
-		maxConn.Mux.Unlock()
 		return true
 	}
 	return false
