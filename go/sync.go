@@ -7,6 +7,8 @@ var (
 	ItemSyncMapForBuy sync.Map
 
 	maxConn = MaxConnection{}
+
+	shipmentMaxConn = MaxConnection{}
 )
 
 type MaxConnection struct {
@@ -44,4 +46,10 @@ func WaitConnection() bool {
 		return true
 	}
 	return false
+}
+
+func DoneConnection() {
+	maxConn.Mux.Lock()
+	maxConn.CurrentConnCount -= 1
+	maxConn.Mux.Unlock()
 }

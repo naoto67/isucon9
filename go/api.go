@@ -56,6 +56,7 @@ func APIPaymentToken(paymentURL string, param *APIPaymentServiceTokenReq) (*APIP
 	if !ok {
 		return nil, errors.New("err")
 	}
+	defer DoneConnection()
 	b, _ := json.Marshal(param)
 
 	req, err := http.NewRequest(http.MethodPost, paymentURL+"/token", bytes.NewBuffer(b))
