@@ -138,7 +138,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = <-chErr
+	scr, err := <-chScr, <-chErr
 	if err != nil {
 		logger.Infow("shipment error", "err", err)
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
@@ -146,7 +146,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-	scr := <-chScr
 
 	pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
 		ShopID: PaymentServiceIsucariShopID,
