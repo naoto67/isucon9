@@ -1328,7 +1328,7 @@ func postShipDone(w http.ResponseWriter, r *http.Request) {
 		ReserveID: shipping.ReserveID,
 	})
 	if err != nil {
-		log.Print(err)
+		logger.Info("failed to request to shipment service", "reserve_id", shipping.ReserveID, "err", err)
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
 		tx.Rollback()
 
@@ -1475,7 +1475,8 @@ func postComplete(w http.ResponseWriter, r *http.Request) {
 		ReserveID: shipping.ReserveID,
 	})
 	if err != nil {
-		log.Print(err)
+		logger.Info("failed to request to shipment service", "reserve_id", shipping.ReserveID, "err", err)
+
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
 		tx.Rollback()
 
