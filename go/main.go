@@ -263,7 +263,7 @@ func postInitialize(w http.ResponseWriter, r *http.Request) {
 
 	cli := &http.Client{}
 	for _, host := range appHosts {
-		url := host + "/other_initialize"
+		url := "http://" + host + "/other_initialize"
 		request, _ := http.NewRequest("GET", url, nil)
 		resp, err := cli.Do(request)
 		if err != nil {
