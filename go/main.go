@@ -1887,7 +1887,7 @@ func postLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(u)
