@@ -5,6 +5,17 @@ import "sync"
 var (
 	ItemSyncMap       sync.Map
 	ItemSyncMapForBuy sync.Map
+
+	maxConn = MaxConnection{}
+)
+
+type MaxConnection struct {
+	CurrentConnCount int
+	Mux              sync.Mutex
+}
+
+const (
+	MAX_CONNECTION int = 100
 )
 
 func LockItem(itemID int64) bool {
@@ -23,4 +34,15 @@ func LockItemForBuy(itemID int64) bool {
 
 func UnlockItemForBuy(itemID int64) {
 	ItemSyncMapForBuy.Delete(itemID)
+}
+
+func WaitConnection() bool {
+	for {
+		maxConn.Mux.Lock()
+		if maxConn.CurrentConnCount < MAX_CONNECTION {
+			maxConn.CurrentConnCount += 1
+			return true
+		}
+		maxConn.Mux.Unlock()
+	}
 }
