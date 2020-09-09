@@ -80,20 +80,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chScr := make(chan *APIShipmentCreateRes)
-	chErr := make(chan error)
-	go func() {
-		scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
-			ToAddress:   buyer.Address,
-			ToName:      buyer.AccountName,
-			FromAddress: seller.Address,
-			FromName:    seller.AccountName,
-		})
-		logger.Info("go func shipment create", "scr", scr, "err", err)
-		chScr <- scr
-		chErr <- err
-	}()
-
 	tx := dbx.MustBegin()
 
 	result, err := tx.Exec("INSERT INTO `transaction_evidences` (`seller_id`, `buyer_id`, `status`, `item_id`, `item_name`, `item_price`, `item_description`,`item_category_id`,`item_root_category_id`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -176,6 +162,19 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		tx.Rollback()
 		return
 	}
+	chScr := make(chan *APIShipmentCreateRes)
+	chErr := make(chan error)
+	go func() {
+		scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
+			ToAddress:   buyer.Address,
+			ToName:      buyer.AccountName,
+			FromAddress: seller.Address,
+			FromName:    seller.AccountName,
+		})
+		logger.Info("go func shipment create", "scr", scr, "err", err)
+		chScr <- scr
+		chErr <- err
+	}()
 
 	scr, err := <-chScr, <-chErr
 	if err != nil {
