@@ -67,6 +67,8 @@ var (
 
 	logger      *zap.SugaredLogger
 	cacheClient *redisClient
+
+	appHosts []string
 )
 
 func init() {
@@ -154,6 +156,9 @@ func main() {
 	mux.HandleFunc(pat.Post("/login"), postLogin)
 	mux.HandleFunc(pat.Post("/register"), postRegister)
 	mux.HandleFunc(pat.Get("/reports.json"), getReports)
+
+	// custom
+	mux.HandleFunc(pat.Get("/other_initialize"), postOtherInitialize)
 	// Frontend
 	mux.HandleFunc(pat.Get("/"), getIndex)
 	mux.HandleFunc(pat.Get("/login"), getIndex)
@@ -222,19 +227,6 @@ func getCategoryByID(q sqlx.Queryer, categoryID int) (category Category, err err
 	return category, nil
 }
 
-func getConfigByName(name string) (string, error) {
-	config := Config{}
-	err := dbx.Get(&config, "SELECT * FROM `configs` WHERE `name` = ?", name)
-	if err == sql.ErrNoRows {
-		return "", nil
-	}
-	if err != nil {
-		log.Print(err)
-		return "", err
-	}
-	return config.Val, err
-}
-
 func getPaymentServiceURL() string {
 	val, _ := getConfigByName("payment_service_url")
 	if val == "" {
@@ -255,8 +247,25 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	templates.ExecuteTemplate(w, "index.html", struct{}{})
 }
 
+func postOtherInitialize(w http.ResponseWriter, r *http.Request) {
+	FlushConfig()
+	res := struct{ message string }{"ok"}
+	json.NewEncoder(w).Encode(res)
+}
+
 func postInitialize(w http.ResponseWriter, r *http.Request) {
 	ri := reqInitialize{}
+
+	cli := &http.Client{}
+	for _, host := range appHosts {
+		url := host + "/other_initialize"
+		request, _ := http.NewRequest("GET", url, nil)
+		resp, err := cli.Do(request)
+		if err != nil {
+			logger.Errorw("RequestError", "err", err)
+		}
+		resp.Body.Close()
+	}
 
 	err := json.NewDecoder(r.Body).Decode(&ri)
 	if err != nil {
