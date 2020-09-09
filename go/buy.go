@@ -32,7 +32,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	targetItem := Item{}
 	ok := LockItemForBuy(rb.ItemID)
 	if !ok {
-		outputErrorMsg(w, http.StatusNotFound, "item not found")
+		outputErrorMsg(w, http.StatusForbidden, "item is not for sale")
 		return
 	}
 	defer UnlockItemForBuy(rb.ItemID)
