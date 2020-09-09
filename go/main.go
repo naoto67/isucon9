@@ -1188,29 +1188,31 @@ func postShip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	img, err := APIShipmentRequest(getShipmentServiceURL(), &APIShipmentRequestReq{
-		ReserveID: shipping.ReserveID,
-	})
-	if err != nil {
-		log.Print(err)
-		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
-		tx.Rollback()
+	if shipping.Status != ShippingsStatusWaitPickup {
+		img, err := APIShipmentRequest(getShipmentServiceURL(), &APIShipmentRequestReq{
+			ReserveID: shipping.ReserveID,
+		})
+		if err != nil {
+			log.Print(err)
+			outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
+			tx.Rollback()
 
-		return
-	}
+			return
+		}
 
-	_, err = tx.Exec("UPDATE `shippings` SET `status` = ?, `img_binary` = ?, `updated_at` = ? WHERE `transaction_evidence_id` = ?",
-		ShippingsStatusWaitPickup,
-		img,
-		time.Now(),
-		transactionEvidence.ID,
-	)
-	if err != nil {
-		log.Print(err)
+		_, err = tx.Exec("UPDATE `shippings` SET `status` = ?, `img_binary` = ?, `updated_at` = ? WHERE `transaction_evidence_id` = ?",
+			ShippingsStatusWaitPickup,
+			img,
+			time.Now(),
+			transactionEvidence.ID,
+		)
+		if err != nil {
+			log.Print(err)
 
-		outputErrorMsg(w, http.StatusInternalServerError, "db error")
-		tx.Rollback()
-		return
+			outputErrorMsg(w, http.StatusInternalServerError, "db error")
+			tx.Rollback()
+			return
+		}
 	}
 
 	tx.Commit()
