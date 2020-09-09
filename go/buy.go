@@ -124,19 +124,19 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chPstr := make(chan *APIPaymentServiceTokenRes)
-	chPstrErr := make(chan error)
-	go func() {
-		pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
-			ShopID: PaymentServiceIsucariShopID,
-			Token:  rb.Token,
-			APIKey: PaymentServiceIsucariAPIKey,
-			Price:  targetItem.Price,
-		})
-		chPstr <- pstr
-		chPstrErr <- err
-	}()
-	pstr, err := <-chPstr, <-chPstrErr
+	// chPstr := make(chan *APIPaymentServiceTokenRes)
+	// chPstrErr := make(chan error)
+	// go func() {
+	pstr, err := APIPaymentToken(getPaymentServiceURL(), &APIPaymentServiceTokenReq{
+		ShopID: PaymentServiceIsucariShopID,
+		Token:  rb.Token,
+		APIKey: PaymentServiceIsucariAPIKey,
+		Price:  targetItem.Price,
+	})
+	//	chPstr <- pstr
+	//	chPstrErr <- err
+	//}()
+	//pstr, err := <-chPstr, <-chPstrErr
 	if err != nil {
 		log.Print(err)
 
@@ -163,21 +163,20 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chScr := make(chan *APIShipmentCreateRes)
-	chErr := make(chan error)
-	go func() {
-		scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
-			ToAddress:   buyer.Address,
-			ToName:      buyer.AccountName,
-			FromAddress: seller.Address,
-			FromName:    seller.AccountName,
-		})
-		logger.Info("go func shipment create", "scr", scr, "err", err)
-		chScr <- scr
-		chErr <- err
-	}()
-
-	scr, err := <-chScr, <-chErr
+	// chScr := make(chan *APIShipmentCreateRes)
+	// chErr := make(chan error)
+	// go func() {
+	scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
+		ToAddress:   buyer.Address,
+		ToName:      buyer.AccountName,
+		FromAddress: seller.Address,
+		FromName:    seller.AccountName,
+	})
+	//		logger.Info("go func shipment create", "scr", scr, "err", err)
+	//		chScr <- scr
+	//		chErr <- err
+	//	}()
+	// scr, err := <-chScr, <-chErr
 	if err != nil {
 		logger.Infow("shipment error", "err", err)
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
