@@ -139,7 +139,7 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 
 	err = <-chErr
 	if err != nil {
-		logger.Info(err)
+		logger.Infow("shipment error", "err", err)
 		outputErrorMsg(w, http.StatusInternalServerError, "failed to request to shipment service")
 		tx.Rollback()
 
