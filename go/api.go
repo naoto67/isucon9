@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -52,11 +51,11 @@ type APIShipmentStatusReq struct {
 }
 
 func APIPaymentToken(paymentURL string, param *APIPaymentServiceTokenReq) (*APIPaymentServiceTokenRes, error) {
-	ok := WaitConnection()
-	if !ok {
-		return nil, errors.New("err")
-	}
-	defer DoneConnection()
+	// ok := WaitConnection()
+	// if !ok {
+	// 	return nil, errors.New("err")
+	// }
+	// defer DoneConnection()
 	b, _ := json.Marshal(param)
 
 	req, err := http.NewRequest(http.MethodPost, paymentURL+"/token", bytes.NewBuffer(b))
