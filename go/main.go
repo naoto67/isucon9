@@ -142,6 +142,16 @@ func main() {
 
 	InitCategory()
 
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		for {
+			select {
+			case <-ticker.C:
+				logger.Info("MaxConn", maxConn.CurrentConnCount)
+			}
+		}
+	}()
+
 	mux := goji.NewMux()
 
 	// API
