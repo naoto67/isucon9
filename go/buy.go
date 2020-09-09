@@ -80,20 +80,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chScr := make(chan *APIShipmentCreateRes)
-	chErr := make(chan error)
-	go func() {
-		scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
-			ToAddress:   buyer.Address,
-			ToName:      buyer.AccountName,
-			FromAddress: seller.Address,
-			FromName:    seller.AccountName,
-		})
-		logger.Info("go func shipment create", "scr", scr, "err", err)
-		chScr <- scr
-		chErr <- err
-	}()
-
 	chPstr := make(chan *APIPaymentServiceTokenRes)
 	chPstrErr := make(chan error)
 	go func() {
@@ -178,6 +164,20 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	chScr := make(chan *APIShipmentCreateRes)
+	chErr := make(chan error)
+	go func() {
+		scr, err := APIShipmentCreate(getShipmentServiceURL(), &APIShipmentCreateReq{
+			ToAddress:   buyer.Address,
+			ToName:      buyer.AccountName,
+			FromAddress: seller.Address,
+			FromName:    seller.AccountName,
+		})
+		logger.Info("go func shipment create", "scr", scr, "err", err)
+		chScr <- scr
+		chErr <- err
+	}()
+
 	scr, err := <-chScr, <-chErr
 	if err != nil {
 		logger.Infow("shipment error", "err", err)
@@ -209,6 +209,8 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx.Commit()
+
+	time.Sleep(45 * time.Millisecond)
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(resBuy{TransactionEvidenceID: transactionEvidenceID})
