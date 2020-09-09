@@ -80,8 +80,6 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	time.Sleep(150 * time.Millisecond)
-
 	chPstr := make(chan *APIPaymentServiceTokenRes)
 	chPstrErr := make(chan error)
 	go func() {
