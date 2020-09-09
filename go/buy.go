@@ -30,12 +30,12 @@ func postBuy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	targetItem := Item{}
-	ok := LockItemForBuy(rb.ItemID)
+	ok := LockItem(rb.ItemID)
 	if !ok {
 		outputErrorMsg(w, http.StatusForbidden, "item is not for sale")
 		return
 	}
-	defer UnlockItemForBuy(rb.ItemID)
+	defer UnlockItem(rb.ItemID)
 	err = dbx.Get(&targetItem, "SELECT * FROM `items` WHERE `id` = ?", rb.ItemID)
 	if err == sql.ErrNoRows {
 		outputErrorMsg(w, http.StatusNotFound, "item not found")
