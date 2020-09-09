@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	ConfigCache map[string]string
+	ConfigCache = make(map[string]string)
 )
 
 func FlushConfig() {
